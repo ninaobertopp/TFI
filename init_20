@@ -17,9 +17,9 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (210*24.0);
+    public final static double STEPS = (29*24.0);
     public final static int ITERATIONS = 3; // number of times the model will run
-    public static boolean VISUALS = true; // turns on/off visualizations for the model
+    public static boolean VISUALS = false; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
     public final static int Tumor = 2; // tumor cell
@@ -31,8 +31,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {-1, 41, 83, 125, 167};//there's a bug here: need to put start-1; {-1, 13}
-    double[] TCE_Duration = {29, 29, 29, 29}; //there's a bug here: need to put duration+1; {8, 8}
+    double[] TCE_start = {0, 14};//there's a bug here: need to put start-1; {-1, 13}; {-1, 5, 11, 17, 23}
+    double[] TCE_Duration = {7, 7}; //there's a bug here: need to put duration+1; {8, 8}; {4, 4, 4, 4, 4}
 
     public Rand rn = new Rand();
 
@@ -55,6 +55,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         output = new FileIO(outFileName, "w");
         output.Write("Time,TCELLS, EXTCELLS, TUMOR, Inactive Tcells" + "\n");
         double totalArea = xDim * yDim;
+// was this for the bone?
         double blackBoxArea = 0.129 * totalArea;
         int sideLength = (int) Math.sqrt(blackBoxArea);
         // Calculate the center of the grid
@@ -120,7 +121,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         writeHere.WriteDelimit(cts, ",");
         writeHere.Write ("\n");
     }
-
+//seems like this part of the code isn’t used?! 
     public void ModelStep(double timeSteep, double day) {
         ShuffleAgents(rn);
         for (agentLattice c : this) {
@@ -161,6 +162,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
 
 //            String path_to_output_file = output_dir.concat("/").concat("CellCounts_" + j).concat(".csv");
             // OUTPUT WINDOW
+GIF saved anywhere??
             UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
             //UIGrid CXCL9_vis = new UIGrid(xDim, yDim, 4,2,5);
             UIWindow win = new UIWindow("");
@@ -183,7 +185,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 timeStep = i;
                 g.TCE_ON = false;
                 for (int k = 0; k < g.TCE_start.length; k++) {
-                    if (day > g.TCE_start[k] && day < g.TCE_start[k] + g.TCE_Duration[k]) {
+                    if (day >= g.TCE_start[k] && day <= g.TCE_start[k] + g.TCE_Duration[k] - 1) {
                         g.TCE_ON = true;
                         //System.out.println("TCE_ON set to true at day: " + day + ", timeStep: " + timeStep + ", duration index: " + k);
                     }
