@@ -23,6 +23,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     //GRID FIELDS//
     ///////////////
 
+    //Matt:
     //3/4/23 testing pob differentiation at 0.004 for 25 sims
     //4.19/24 need to check the increase in aOC resorb. Now it is 5, running without myeloma and setting it to 0.1
     //4/23/24 testing new aOC aging effect, increased aOC lifespan - this is done 4/24/24
@@ -56,6 +57,10 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     //1/22/25 added a feature to prevent infinite loops in CD8 T-cell placement
     //1/23/25 Changed the number of cancer cells CD8 T-cells can kill before exhuastion to ~100
 
+    //Nina:
+    //2/22/2025 Add "bystander_TIL" to code
+
+
 
 
     //Variables to switch on/off treatment/other things
@@ -75,9 +80,9 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
     //CLUSTER
     public static boolean PARAM_SWEEP = false; //true; //true; //use when importing parameters to loop through
-    public static boolean HEADLESS = false;//true; //use true with cluster
+    public static boolean HEADLESS = true;//true; //use true with cluster
     public static boolean LOCAL = true; // use false with cluster
-    public static double numSteps = 2.0*365.0*24.0*60.0; // years the model will run
+    public static double numSteps = 1.0*28*24.0*60.0; // years the model will run
     public static int numSims = 25; //Number of Simulations
     public static int MYELOMA_SEED_TIME = 0;
 
@@ -88,6 +93,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             activeTcell = RGB256(17, 150, 150),
             EXHT_CELL=RGB256(200, 50, 250),
             supressorTcell =RGB256(255, 165, 0),
+            bystander_TIL = RGB256(255, 165, 0),
             bloodVessel=RGB256(138, 3, 3),
             ALMM=RGB(255, 105, 180);
 
@@ -1159,6 +1165,9 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             else if(c.type == supressorTcell){
                 cts[12]++;
             }
+            else if(c.type == bystander_TIL){
+            cts[13]++;
+            }
 
         }
         //population of one timestep per line
@@ -1469,7 +1478,8 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                         double reducedMeanFraction = 0.23; // based on experimental data
                         if (TCELL && initial_recruitment == false) {
                             Random rand = new Random();
-                            int InitTcells = 160; // Number of T-cells to place //160 for TCE
+                            int InitTcells = 80; // Number of T-cells to place //160 for TCE
+                            int InitBystanderTcells = 80; // 50% will be bystander TILs
                             int InitTregs = 26; // Number of suppressor Tcells to place
                             int j = 0; // Counter for successfully placed T-cells
                             int k = 0; // Counter for successfully placed T-cells
@@ -1508,18 +1518,31 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                                             j++; // Increment only if T-cell placement is successful
                                         }
                                     }
-
-
-                                    // Debug logging every 100 attempts
-//                                    if (attempts % 100 == 0) {
-//                                        System.out.println("Attempts: " + attempts + ", T-cells placed: " + j);
-//                                    }
                                 }
+                            }
+                            // 🔹 Bystander T cell placement (same probability as active T cells)
+                            while (j < InitBystanderTcells && attempts < maxAttempts) {
+                                attempts++;
 
-//                                if (attempts >= maxAttempts) {
-//                                    System.out.println("Reached maximum attempts. T-cells placed: " + j + " out of " + InitTcells);
-//                                }
+                                int randomVessLocation = vessLocations.get(rand.nextInt(vessLocations.size()));
 
+                                if (g.GetAgent(randomVessLocation).type == bloodVessel) {
+                                    int[] movdivHood = MooreHood(true);
+                                    int emptyNeighbors = g.MapEmptyHood(movdivHood, randomVessLocation);
+
+                                    if (emptyNeighbors > 0) {
+                                        int chosenIndex = g.rn.Int(emptyNeighbors);
+                                        int chosenCell = movdivHood[chosenIndex];
+
+                                        if (g.GetAgent(chosenCell) == null) {
+                                            BoneCell_2022May17 c = g.NewAgentSQ(chosenCell);
+                                            c.type = bystander_TIL; // Place as a bystander T cell
+
+                                            // Bystander T cells do NOT express PD-1, so no need for Gaussian assignment
+                                            j++; // Increment only if placement is successful
+                                        }
+                                    }
+                                }
                             }
                             while (k < InitTregs && attempts < maxAttempts) {
                                 attempts++;
