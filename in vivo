@@ -61,8 +61,6 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     //2/22/2025 Add "bystander_TIL" to code
 
 
-
-
     //Variables to switch on/off treatment/other things
     public static boolean TGFB_INHIBITOR = false;
     public static boolean RANKL_INHIBITOR = false;
@@ -82,56 +80,56 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public static boolean PARAM_SWEEP = false; //true; //true; //use when importing parameters to loop through
     public static boolean HEADLESS = true;//true; //use true with cluster
     public static boolean LOCAL = true; // use false with cluster
-    public static double numSteps = 1.0*28*24.0*60.0; // years the model will run
+    public static double numSteps = 1.0 * 28 * 24.0 * 60.0; // years the model will run
     public static int numSims = 25; //Number of Simulations
     public static int MYELOMA_SEED_TIME = 0;
 
 
-    public final static int BONE = RGB256(255,255,250), MSC = RGB256(135,206,250),
-            pOB = RGB256(100,149,237), aOB = BLUE, pOC = RGB256(230,100,130),
-            aOC = RED, LINING = RGB256(64,106,151), MM = RGB256(0,128,0),
+    public final static int BONE = RGB256(255, 255, 250), MSC = RGB256(135, 206, 250),
+            pOB = RGB256(100, 149, 237), aOB = BLUE, pOC = RGB256(230, 100, 130),
+            aOC = RED, LINING = RGB256(64, 106, 151), MM = RGB256(0, 128, 0),
             activeTcell = RGB256(17, 150, 150),
-            EXHT_CELL=RGB256(200, 50, 250),
-            supressorTcell =RGB256(255, 165, 0),
+            EXHT_CELL = RGB256(200, 50, 250),
+            supressorTcell = RGB256(255, 100, 0),
             bystander_TIL = RGB256(255, 165, 0),
-            bloodVessel=RGB256(138, 3, 3),
-            ALMM=RGB(255, 105, 180);
+            bloodVessel = RGB256(138, 3, 3),
+            ALMM = RGB(255, 105, 180);
 
 
     //SETUP
     static double MinToHour = 60.0;
     public final static double SPACESTEP = 10.0;//um
-    public static double TIMESTEP_AGENT = 6.0/MinToHour; //0.1;//hr; //6.0 min; 6.0/60.0 hour
-    public final static double N_TIMESTEP_PDE = 60.0*(MinToHour*TIMESTEP_AGENT);//360.0; //Number of diffusion timesteps; 1 dts = 1 sec; 360 dts = 1 ts = 6 min
+    public static double TIMESTEP_AGENT = 6.0 / MinToHour; //0.1;//hr; //6.0 min; 6.0/60.0 hour
+    public final static double N_TIMESTEP_PDE = 60.0 * (MinToHour * TIMESTEP_AGENT);//360.0; //Number of diffusion timesteps; 1 dts = 1 sec; 360 dts = 1 ts = 6 min
     public static int timeStep = 0;
 
     //BDF AND RANKL
-    double RANKL_productionRate = 2.04e-9*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE;//2.04e-9//dts; RANKL production rate
-    double RANKL_decayRate = -0.35*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE; //dts; BE CAREFUL THIS ISN'T TOO BIG OR ELSE CONCENTRATION GOES NEGATIVE
-    double TGFB_productionRate = 2.04e-9*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE;//2.04e-9//dts; RANKL production rate
-    static double TGFB_basalRate = 2.04e-11*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE; //2.04e-11//dts; basal TGFB production rate (not by OC)
-    static double TGFB_decayRate = -0.35*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE; //dts; BE CAREFUL THIS ISN'T TOO BIG OR ELSE CONCENTRATION GOES NEGATIVE
+    double RANKL_productionRate = 2.04e-9 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE;//2.04e-9//dts; RANKL production rate
+    double RANKL_decayRate = -0.35 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE; //dts; BE CAREFUL THIS ISN'T TOO BIG OR ELSE CONCENTRATION GOES NEGATIVE
+    double TGFB_productionRate = 2.04e-9 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE;//2.04e-9//dts; RANKL production rate
+    static double TGFB_basalRate = 2.04e-11 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE; //2.04e-11//dts; basal TGFB production rate (not by OC)
+    static double TGFB_decayRate = -0.35 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE; //dts; BE CAREFUL THIS ISN'T TOO BIG OR ELSE CONCENTRATION GOES NEGATIVE
 
     //DiffCoef MUST <0.25 for FTCS scheme!
-    double RANKL_DiffCoef = 780.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE); //dts
-    double TGFB_DiffCoef = 780.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE); //dts
-    double Extra_TGFBtime = 4320.0/(MinToHour*TIMESTEP_AGENT); //4320 min = 720 ts = 3 days
+    double RANKL_DiffCoef = 780.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP * N_TIMESTEP_PDE); //dts
+    double TGFB_DiffCoef = 780.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP * N_TIMESTEP_PDE); //dts
+    double Extra_TGFBtime = 4320.0 / (MinToHour * TIMESTEP_AGENT); //4320 min = 720 ts = 3 days
     static double maxTGFB = 8.7e-10; //1.12e-9; //1.78e-9;//1.21e-9; //6.4e-10
     double maxRANKL = 1.7e-9; //1.02e-9;//1.21e-9;//1.97e-9; //5.8e-10
-    double Ts = TGFB_basalRate/(Math.abs(TGFB_decayRate)*maxTGFB); //Basal TGFB
+    double Ts = TGFB_basalRate / (Math.abs(TGFB_decayRate) * maxTGFB); //Basal TGFB
 
     //CHEMOTAXIS
-    double pOC_DiffCoef = 0.1*3.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);// //slower in marrow than in water
-    double MSC_DiffCoef = 0.01*3.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);//ts //slower in marrow than in water
-    double pOB_DiffCoef = 0.01*3.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);//ts //pOB don't wander away from bone
-    double Tcell_DiffCoef = 0.01*3.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);
-    double pOC_TaxisCoef = 5.0e10*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//5e10 //ts
-    double pOB_TaxisCoef = 5.0e11*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//5e11 //ts
-    double MSC_TaxisCoef = 5.0e9*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);//4e11 //ts //currently same as MM_TaxisCoef
-    double Tcell_TaxisCoeff = 5.0e10*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP);
+    double pOC_DiffCoef = 0.1 * 3.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);// //slower in marrow than in water
+    double MSC_DiffCoef = 0.01 * 3.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);//ts //slower in marrow than in water
+    double pOB_DiffCoef = 0.01 * 3.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//3.0*TIMESTEP_AGENT/(SPACESTEP*SPACESTEP);//ts //pOB don't wander away from bone
+    double Tcell_DiffCoef = 0.01 * 3.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);
+    double pOC_TaxisCoef = 5.0e10 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//5e10 //ts
+    double pOB_TaxisCoef = 5.0e11 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//5e11 //ts
+    double MSC_TaxisCoef = 5.0e9 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);//4e11 //ts //currently same as MM_TaxisCoef
+    double Tcell_TaxisCoeff = 5.0e10 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP);
 
     //CELL PARAMETERS
-    public int TURNOVER_TIME = (int) (2102400.0/(MinToHour*TIMESTEP_AGENT)); //2102400 min = 350400 ts = 4 years
+    public int TURNOVER_TIME = (int) (2102400.0 / (MinToHour * TIMESTEP_AGENT)); //2102400 min = 350400 ts = 4 years
     boolean MMstart = false; //MM recruitment
     public double MM_radius = 80.0 / SPACESTEP;
     public double pmutate = 0.0;
@@ -151,25 +149,25 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public double T_CELL_DIV_RATE = 1.0 / 1440 * (MinToHour); // T_CELL DIVISION RATE
 
     public double T_CELL_DEATH_RATE = 1.0 / 1440 * (MinToHour); // T_CELL DEATH RATE
-    double CXCL9_productionRate = (2.04e-9*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE)/8;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE; //changed from 2.61e-10
-    double CXCL9_decayRate = -0.20*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE;
-    double CXCL9_DiffCoef = 2500.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);//*(TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);
-    double maxCXCL9 = (1.7e-9)/8;
+    double CXCL9_productionRate = (2.04e-9 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE) / 8;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE; //changed from 2.61e-10
+    double CXCL9_decayRate = -0.20 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE;
+    double CXCL9_DiffCoef = 2500.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP * N_TIMESTEP_PDE);//*(TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);
+    double maxCXCL9 = (1.7e-9) / 8;
 
-    double IFNG_productionRate = (2.04e-9*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE)/8;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE; //changed from 2.61e-10
-    double IFNG_decayRate = -0.20*(MinToHour*TIMESTEP_AGENT)/N_TIMESTEP_PDE;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE;
-    double IFNG_DiffCoef = 2500.0*(MinToHour*TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);//*(TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);
-    double maxIFNG = (1.7e-9)/8;
+    double IFNG_productionRate = (2.04e-9 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE) / 8;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE; //changed from 2.61e-10
+    double IFNG_decayRate = -0.20 * (MinToHour * TIMESTEP_AGENT) / N_TIMESTEP_PDE;//*(TIMESTEP_AGENT)/N_TIMESTEP_PDE;
+    double IFNG_DiffCoef = 2500.0 * (MinToHour * TIMESTEP_AGENT) / (SPACESTEP * SPACESTEP * N_TIMESTEP_PDE);//*(TIMESTEP_AGENT)/(SPACESTEP*SPACESTEP*N_TIMESTEP_PDE);
+    double maxIFNG = (1.7e-9) / 8;
 
     //INHIBITORS AND TREATMENT
-    double TGFBi=1.0;//1.5; //fold change to production rate
-    double RANKLi=1.0;//1.0; //fold change to production rate
+    double TGFBi = 1.0;//1.5; //fold change to production rate
+    double RANKLi = 1.0;//1.0; //fold change to production rate
     double dose = 1.0; //1.0 ;//1.0; //1.0
     double MM_DEATH_BTZ_FACTOR = 1.5;
-    public int Tx_Interval = (int) (30240.0/(MinToHour*TIMESTEP_AGENT)); //(5760.0/(TIMESTEP_AGENT)); //5760 = 4 day; //30240 min = 21 days
-    public int Tx_Duration = (int) (30240.0/(MinToHour*TIMESTEP_AGENT));//(20160.0/(TIMESTEP_AGENT)); //1440 = 1 day; 4320 = 3 days; 525600 = 365 days; 20160 min = 14 days
-    public int Tx_Total = (int) (525600.0/(MinToHour*TIMESTEP_AGENT));//(525600.0/(MinToHour*TIMESTEP_AGENT)); // 525600 = 365 days
-    public int Start_Time=0;
+    public int Tx_Interval = (int) (30240.0 / (MinToHour * TIMESTEP_AGENT)); //(5760.0/(TIMESTEP_AGENT)); //5760 = 4 day; //30240 min = 21 days
+    public int Tx_Duration = (int) (30240.0 / (MinToHour * TIMESTEP_AGENT));//(20160.0/(TIMESTEP_AGENT)); //1440 = 1 day; 4320 = 3 days; 525600 = 365 days; 20160 min = 14 days
+    public int Tx_Total = (int) (525600.0 / (MinToHour * TIMESTEP_AGENT));//(525600.0/(MinToHour*TIMESTEP_AGENT)); // 525600 = 365 days
+    public int Start_Time = 0;
     //    public int Cycles = 0;
     //AGING
     public static int daysPassed = 0;
@@ -192,14 +190,14 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     double rmax;//=0; //static
     double tmax;//=0;
     //    double bmax;//=0;
-    double convert_to_days = (MinToHour*TIMESTEP_AGENT)/(60.0*24.0); //1 ts = 6 min = 1/240 day
+    double convert_to_days = (MinToHour * TIMESTEP_AGENT) / (60.0 * 24.0); //1 ts = 6 min = 1/240 day
     int pOB_ID_counter;
     int aOC_ID_counter;
     int R_MM_ID_counter;
     int count_BA = 0;
     int init_BA = 0;
     int last_event;
-    int Nts = (int) ((numSteps)/(MinToHour*TIMESTEP_AGENT));
+    int Nts = (int) ((numSteps) / (MinToHour * TIMESTEP_AGENT));
 
     public Rand rn;
     public PDEGrid2D RANKL;
@@ -231,16 +229,15 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public ArrayList<Integer> tempLiningList = new ArrayList<>();
     public ArrayList<Integer> tempOBList = new ArrayList<>();
 
-    double[] RANKLvals = new double[xDim*yDim];//new double[xDim*yDim];
-    double[] TGFBvals = new double[xDim*yDim];//new double[xDim*yDim];
+    double[] RANKLvals = new double[xDim * yDim];//new double[xDim*yDim];
+    double[] TGFBvals = new double[xDim * yDim];//new double[xDim*yDim];
     List<Object> BA_index = new ArrayList<>();
-    boolean [][] exposedBone = new boolean[xDim][yDim];
-    boolean [][] extraTGFB = new boolean[xDim][yDim];
-    double [][] TGFBtimer = new double[xDim][yDim];
-    int [][] aOC_depth = new int[xDim][yDim];
+    boolean[][] exposedBone = new boolean[xDim][yDim];
+    boolean[][] extraTGFB = new boolean[xDim][yDim];
+    double[][] TGFBtimer = new double[xDim][yDim];
+    int[][] aOC_depth = new int[xDim][yDim];
     //    int [][] BMU_ID = new int[xDim][yDim];
-    int [][] resorbedBone = new int[xDim][yDim];
-
+    int[][] resorbedBone = new int[xDim][yDim];
 
 
     //public int eOpt;
@@ -256,11 +253,12 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     FileIO R_MM_clone;
     FileIO clones;
     FileIO InitialBone;
-//    FileIO params;
+    //    FileIO params;
+    FileIO tumorCellOut;
 
     //This is important for serializable model
     @Override
-    public void SetupConstructors(){
+    public void SetupConstructors() {
         this._PassAgentConstructor(BoneCell_2022May17.class);
     }
 
@@ -269,26 +267,16 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     ////////////////////
 
     public BoneGrid_2022May17(int xDim, int yDim, Rand rn, String Bone_FileName) {
-        super(xDim, yDim, BoneCell_2022May17.class,true,true);
+        super(xDim, yDim, BoneCell_2022May17.class, true, true);
         this.rn = rn;
 
         //Create 2D PDE Grid for RANKL and boundary condition
-        RANKL = new PDEGrid2D(xDim, yDim,true,true); //This assumes PERIODIC BOUNDARY CONDITION (wrapX=TRUE,wrapY=TRUE)
-        TGFB = new PDEGrid2D(xDim, yDim,true,true); //This assumes PERIODIC BOUNDARY CONDITION (wrapX=TRUE,wrapY=TRUE)
-        CXCL9 = new PDEGrid2D(xDim, yDim,true,true);
-        IFNG = new PDEGrid2D(xDim, yDim,true,true);
+        RANKL = new PDEGrid2D(xDim, yDim, true, true); //This assumes PERIODIC BOUNDARY CONDITION (wrapX=TRUE,wrapY=TRUE)
+        TGFB = new PDEGrid2D(xDim, yDim, true, true); //This assumes PERIODIC BOUNDARY CONDITION (wrapX=TRUE,wrapY=TRUE)
+        CXCL9 = new PDEGrid2D(xDim, yDim, true, true);
+        IFNG = new PDEGrid2D(xDim, yDim, true, true);
 
-        //Create file to record output
-//        out = new FileIO(outFileName, "w");
-//        out.Write("Timestep" + "," + "BONE" + "," + "pOB" + "," + "aOB" + "," + "pOC" + "," + "aOC" + "," + "MSC" + "," + "LINING" + "," + "MM" + "\n");
-//
-//        RANKLout=new FileIO(RANKL_FileName,"w");
-//        TGFBout=new FileIO(TGFB_FileName,"w");
-//        BAout=new FileIO(BA_FileName,"w");
-//        OC_TGFBout=new FileIO(OC_TGFB_FileName,"w");
-        //OC_TGFBout.Write("Timestep" + "," + "cell_ID" + "," + "N_tick" + "," + "TGFB" + "\n");
-
-        InitialBone=new FileIO(Bone_FileName, "r");
+        InitialBone = new FileIO(Bone_FileName, "r");
 
     }
 
@@ -318,86 +306,65 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
         return val;
     }
 
-    public void newFileIO (String projPath, String mode) {
+    public void newFileIO(String projPath, String mode) {
 
-        pOBborn = new FileIO(projPath + "pOBborn.csv", mode);
-        pOBdiff = new FileIO(projPath + "pOBdiff.csv", mode);
-        aOBdeath = new FileIO(projPath + "aOBdeath.csv", mode);
-        MM_birth_death = new FileIO(projPath + "MM_birth_death.csv", mode);
-        R_MM_clone = new FileIO(projPath + "R_MM_clone.csv", mode);
-        clones = new FileIO(projPath + "clones.csv", mode);
-        out = new FileIO(projPath + "PopOut.csv", mode);
-        RANKLout = new FileIO(projPath + "RANKLout.csv", mode);
-        TGFBout = new FileIO(projPath + "TGFBout.csv", mode);
-        BAout = new FileIO(projPath + "BAout.csv", mode);
-        OC_TGFBout = new FileIO(projPath + "OC_TGFBout.csv",mode);
+//        pOBborn = new FileIO(projPath + "pOBborn.csv", mode);
+//        pOBdiff = new FileIO(projPath + "pOBdiff.csv", mode);
+//        aOBdeath = new FileIO(projPath + "aOBdeath.csv", mode);
+//        MM_birth_death = new FileIO(projPath + "MM_birth_death.csv", mode);
+//        R_MM_clone = new FileIO(projPath + "R_MM_clone.csv", mode);
+//        clones = new FileIO(projPath + "clones.csv", mode);
+        out = new FileIO(projPath + "PopOut.csv", "w");
+//        RANKLout = new FileIO(projPath + "RANKLout.csv", mode);
+//        TGFBout = new FileIO(projPath + "TGFBout.csv", mode);
+//        BAout = new FileIO(projPath + "BAout.csv", mode);
+//        OC_TGFBout = new FileIO(projPath + "OC_TGFBout.csv", mode);
+        tumorCellOut = new FileIO(projPath +"TumorCellCounts.csv", "w");
 //        params = new FileIO(projPath + "params.csv",mode);
 
 
-        if(mode=="w") {
-            pOBborn.Write("cell type" + "," + "cell_ID" + "," + "timestep born" + "," + "RANKL" + "," + "TGFB" + "\n");
-            pOBdiff.Write("pOB_ID" + "," + "timestep diff" + "," + "pOB age" + "," + "TGFB" + "\n");
-            aOBdeath.Write("time" + "," + "cell type" + "," + "lifespan" + "," + "cell_ID" + "," + "N_tick" + "," + "count_BA" + "," + "TotResorb" + "\n");
-            MM_birth_death.Write("action" + "," +  "timestep" +  "," + "nearest bone" + "," + "RANKL" + "," + "TGFB" + "\n");
-            R_MM_clone.Write("Timestep" +  "," + "TREATMENT_ON" + "," + "dose" + "," + "TGFBthresh" + "," + "MSC_pOB" + "\n");
-            clones.Write("Timestep" + "\n");
-            out.Write("Timestep" + "," + "BONE" + "," + "pOB" + "," + "aOB" + "," + "pOC" + "," + "aOC" + "," + "MSC" + "," + "LINING" + "," + "S_MM" + "," + "R_MM"+"," +"AL_MM"+ ","+"TCell"+","+"ExtTcell"+"," +"Inactive Tcell" +","+ "TREATMENT_ON" + "," + "BORTEZOMIB" + "," + "MYELOMA" + "\n");
+        if (mode == "w") {
+//            pOBborn.Write("cell type" + "," + "cell_ID" + "," + "timestep born" + "," + "RANKL" + "," + "TGFB" + "\n");
+//            pOBdiff.Write("pOB_ID" + "," + "timestep diff" + "," + "pOB age" + "," + "TGFB" + "\n");
+//            aOBdeath.Write("time" + "," + "cell type" + "," + "lifespan" + "," + "cell_ID" + "," + "N_tick" + "," + "count_BA" + "," + "TotResorb" + "\n");
+//            MM_birth_death.Write("action" + "," + "timestep" + "," + "nearest bone" + "," + "RANKL" + "," + "TGFB" + "\n");
+//            R_MM_clone.Write("Timestep" + "," + "TREATMENT_ON" + "," + "dose" + "," + "TGFBthresh" + "," + "MSC_pOB" + "\n");
+//            clones.Write("Timestep" + "\n");
+            out.Write("Timestep" + "," + "BONE" + "," + "pOB" + "," + "aOB" + "," + "pOC" + "," + "aOC" + "," + "MSC" + "," + "LINING" + "," + "S_MM" + "," + "R_MM" + "," + "AL_MM" + "," + "TCell" +"," + "ExtTcell" + "," + "Tregs" + "," + "Bystander_TIL" + "," + "TREATMENT_ON" + "," + "BORTEZOMIB" + "," + "MYELOMA" + "\n");
+            tumorCellOut.Write("Day, Standard_MM, Resistant_MM, BCMA_Loss_MM\n");
 //            params.Write("TGFB_INHIBITOR" + "," + "RANKL_INHIBITOR" + "," + "BISPHOSPHONATE" + "," + "MYELOMA" + "," + "TGFBi" + "," + "RANKLi" + "\n");
 //            params.Write(TGFB_INHIBITOR + "," + RANKL_INHIBITOR + "," + BISPHOSPHONATE + "," + MYELOMA + "," + TGFBi + "," + RANKLi + "\n");
         }
 
     }
 
-    public void closeFileIO () {
-        pOBborn.Close();
-        pOBdiff.Close();
-        aOBdeath.Close();
-        MM_birth_death.Close();
-        R_MM_clone.Close();
-        clones.Close();
+    public void closeFileIO() {
+//        pOBborn.Close();
+//        pOBdiff.Close();
+//        aOBdeath.Close();
+//        MM_birth_death.Close();
+//        R_MM_clone.Close();
+//        clones.Close();
         out.Close();
-        RANKLout.Close();
-        TGFBout.Close();
-        BAout.Close();
-        OC_TGFBout.Close();
+        tumorCellOut.Close();
+//        RANKLout.Close();
+//        TGFBout.Close();
+//        BAout.Close();
+//        OC_TGFBout.Close();
 //        params.Close();
     }
 
-    public void SetParams(int prow, ArrayList<String> param_list){
+    public void SetParams(int prow, ArrayList<String> param_list) {
         //returns an array list of all lines from the file as stringsftype == lining
 
         String[] split_param_list = param_list.get(prow).split(",");
 
-        //RANKL_INHIBITOR=Boolean.parseBoolean(split_param_list[0]);
-        //RANKLi=Double.parseDouble(split_param_list[1]);
-        //BISPHOSPHONATE = Boolean.parseBoolean(split_param_list[0]);
-        //BORTEZOMIB = Boolean.parseBoolean(split_param_list[0]);
-        //dose = Double.parseDouble(split_param_list[1]);
-        // MM_DEATH = 1.0 / Double.parseDouble(split_param_list[1]) * TIMESTEP_AGENT;
-        //MM_radius = Double.parseDouble(split_param_list[1]) / SPACESTEP;
-        //pOBadv = Boolean.parseBoolean(split_param_list[1]);
-        //aOC_scale = Double.parseDouble(split_param_list[1]);
-        //BDFadv = Boolean.parseBoolean(split_param_list[1]);
-        //MM_Division_List_Size = Integer.parseInt(split_param_list[1]);
-        //BORTEZOMIB = Boolean.parseBoolean(split_param_list[1]);
-        //dose = Double.parseDouble(split_param_list[2]);
-        //MAX_RESISTANT_DIVISION_RATE = 1.0 / Double.parseDouble(split_param_list[5]) * (MinToHour);
-        //MM_DEATH_BDF = 1.0 / Double.parseDouble(split_param_list[5]) * (MinToHour);
-        //MM_DEATH_BTZ_FACTOR = Double.parseDouble(split_param_list[5]);
-        //MAX_MM_DIVISION_RATE = 1.0 / Double.parseDouble(split_param_list[5]) * (MinToHour);
-        //MM_EMDR_DEATH= 1.0 / Double.parseDouble(split_param_list[5]) * (MinToHour);
-        //pmutate = Double.parseDouble(split_param_list[2]);
 
         MYELOMA = Boolean.parseBoolean(split_param_list[0]);
         BORTEZOMIB = Boolean.parseBoolean(split_param_list[1]);
         pmutate = Double.parseDouble(split_param_list[2]);
         EMDR = Boolean.parseBoolean(split_param_list[3]);
         dose = Double.parseDouble(split_param_list[4]);
-//            Tx_Duration = (int) (Double.parseDouble(split_param_list[5])/(MinToHour*TIMESTEP_AGENT));
-
-        //MM_DEATH_BDF = 1.0 / Double.parseDouble(split_param_list[5]) * TIMESTEP_AGENT;
-        //INDIRECT_EFFECT = Boolean.parseBoolean(split_param_list[4]);
-        //TIMESTEP_AGENT = Double.parseDouble(split_param_list[5])/MinToHour; //this doesn't work because other parameters depend on it
 
     }
 
@@ -406,59 +373,30 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
         BoneCell_2022May17 cell = GetAgent(x, y);
         return (cell != null && cell.type == LINING);
     }
+
     public void InitBone() {
-
-//  FOR RECTANGULAR BONE
-//      int xDimBone=60; //px
-//      int yDimBone=50;//px
-//      int TrSp=100;//Trabecular Spacing (px)
-//      int xstart = TrSp/2;//xDim / 5; //initial bone placement
-//      int xend = xstart+xDimBone;//4 * xDim / 5; //initial bone placement
-//      int ystart = TrSp/2;//2 * yDim / 5; //initial bone placement
-//      int yend = ystart+yDimBone;//3 * yDim / 5; //initial bone placement
-
-        //Place bone
-        //Bone is placed in center of grid so that 12% of total area is bone.
-//        for (int xi = xstart; xi < xend; xi++) {
-//            for (int yi = ystart; yi < yend; yi++) {
-//                if (xi == xstart || xi == xend - 1 || yi == ystart || yi == yend - 1) {
-//                    NewAgentSQ(xi, yi).type = LINING;
-//                    GetAgent(xi,yi).Init();
-//                    GetAgent(xi,yi).liningAge = TURNOVER_TIME;
-//                    LiningList.add(GetAgent(xi, yi));
-//                    GetAgent(xi,yi).liningAge = TURNOVER_TIME;
-//                } else {
-//                    NewAgentSQ(xi, yi).type = BONE;
-//                    GetAgent(xi,yi).Init();
-//                }
-//
-//                InitBoneList.add(GetAgent(xi,yi).Isq());
-//            }
-////            init_BA=InitBoneList.size();
-//        }
-//        init_BA=InitBoneList.size();
 
 //  FOR IRREGULAR BONE
         int xinit, yinit;
         ArrayList<String> input_data = InitialBone.Read();
-        String[] split_input_data =input_data.get(0).split(",");
+        String[] split_input_data = input_data.get(0).split(",");
 
         //Place bone
-        for (int index=1; index<split_input_data.length; index++){
-            NewAgentSQ(Integer.parseInt(split_input_data[index])).type=BONE;
+        for (int index = 1; index < split_input_data.length; index++) {
+            NewAgentSQ(Integer.parseInt(split_input_data[index])).type = BONE;
             GetAgent(Integer.parseInt(split_input_data[index])).Init();
             InitBoneList.add(Integer.parseInt(split_input_data[index]));
             AllBoneList.add(GetAgent(Integer.parseInt(split_input_data[index])));
         }
-        for (int index=1; index<split_input_data.length; index++){
-            if(GetAgent(Integer.parseInt(split_input_data[index])).MarrowInHood()==true){
-                GetAgent(Integer.parseInt(split_input_data[index])).type=LINING;
+        for (int index = 1; index < split_input_data.length; index++) {
+            if (GetAgent(Integer.parseInt(split_input_data[index])).MarrowInHood() == true) {
+                GetAgent(Integer.parseInt(split_input_data[index])).type = LINING;
                 GetAgent(Integer.parseInt(split_input_data[index])).liningAge = TURNOVER_TIME;
                 LiningList.add(GetAgent(Integer.parseInt(split_input_data[index])));
             }
         }
-        init_BA=InitBoneList.size();
-        MarrowArea = (xDim*yDim)-init_BA;//(xDimBone*yDimBone); //0.12 Bone, 0.88 Marrow
+        init_BA = InitBoneList.size();
+        MarrowArea = (xDim * yDim) - init_BA;//(xDimBone*yDimBone); //0.12 Bone, 0.88 Marrow
         pOCpop = (int) (0.028 * MarrowArea); //0.028 NEED TO PARAMETERIZE!
         BMSCpop = (int) (0.0001 * MarrowArea); //BMSC consist of 0.001%-0.01% of bone marrow
 
@@ -483,7 +421,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             while (PopAt(xinit, yinit) > 0);
             //Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
             NewAgentSQ(xinit, yinit).type = MSC; //Initial stroma
-            MSC_List.add(GetAgent(xinit,yinit));
+            MSC_List.add(GetAgent(xinit, yinit));
         }
         int myelomaCellsToPlace = 15000; // Total number of myeloma cells to place
         int placedMyelomaCells = 0;
@@ -557,26 +495,25 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
         }
 
 
-
     }
 
-    public void RemodelingEvent(ArrayList<BoneCell_2022May17> initEventList, int time){
+    public void RemodelingEvent(ArrayList<BoneCell_2022May17> initEventList, int time) {
         //BoneCell_2022May17 initEvent = LiningList.get(rn.Int(LiningList.size())); //todo: uncomment this when want stochastic; only need to use for single event case
         //BoneCell_2022May17 initEvent = GetAgent(399,149);//TODO: UNCOMMENT THIS WHEN DON'T WANT STOCHASTIC
         //initEvent.RANKL_on=true;
         //initEventList.add(initEvent);
 
-        for(int i=0;i<initEventList.size();i++){
+        for (int i = 0; i < initEventList.size(); i++) {
             GetAgent(initEventList.get(i).Isq()).type = BONE;//TODO: may want to dispose instead of change to bone to preserve bone density
-            GetAgent(initEventList.get(i).Isq()).RANKL_on=true;
-            GetAgent(initEventList.get(i).Isq()).eventtime=time;
+            GetAgent(initEventList.get(i).Isq()).RANKL_on = true;
+            GetAgent(initEventList.get(i).Isq()).eventtime = time;
             //LiningList.remove(GetAgent(initEventList.get(i).Isq())); //commented out 8/29
         }
         initEventList.clear();
     }
 
-    public void EndRemodelingEvent(ArrayList<BoneCell_2022May17> initEventList, int time){
-        for(int i=0;i<initEventList.size();i++){
+    public void EndRemodelingEvent(ArrayList<BoneCell_2022May17> initEventList, int time) {
+        for (int i = 0; i < initEventList.size(); i++) {
             GetAgent(initEventList.get(i).Isq()).type = LINING;//TODO: may want to dispose instead of change to bone to preserve bone density
             GetAgent(initEventList.get(i).Isq()).RANKL_on = false;
             GetAgent(initEventList.get(i).Isq()).MM_RANKL_on = false;
@@ -590,31 +527,31 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public ArrayList<BoneCell_2022May17> InitRANKL(ArrayList<BoneCell_2022May17> recursionList) {
         int[] RANKLHood = MooreHood(false);//Needs to be MooreHood so pOC form on staircase
         int[] MarrowHood = VonNeumannHood(false); //To mirror MarrowInHood
-        int MM_count_new=0;
+        int MM_count_new = 0;
 
         ArrayList<Integer> MarrowList = new ArrayList<>();
 
-        do{
+        do {
             int rSize = recursionList.size();
             for (int i = 0; i < rSize; i++) { //Number of cells to check Moore neighborhood
-                if(initEventList.size()!=5 && !initEventList.contains(recursionList.get(i))){
+                if (initEventList.size() != 5 && !initEventList.contains(recursionList.get(i))) {
                     initEventList.add(recursionList.get(i));
                     int eOpt = recursionList.get(i).MapOccupiedHood(RANKLHood); //Number of cells in Moore neighborhood
                     for (int j = 0; j < eOpt; j++) { //Determine if cells are Bone lining and are not already in initEventList
-                        if (GetAgent(RANKLHood[j]).type == LINING && GetAgent(RANKLHood[j]).BuriedInBone()==false && !initEventList.contains(GetAgent(RANKLHood[j]))) { //&& GetAgent(RANKLHood[j]).MarrowInHood()==true
+                        if (GetAgent(RANKLHood[j]).type == LINING && GetAgent(RANKLHood[j]).BuriedInBone() == false && !initEventList.contains(GetAgent(RANKLHood[j]))) { //&& GetAgent(RANKLHood[j]).MarrowInHood()==true
                             int mOpt = GetAgent(RANKLHood[j]).MapHood(MarrowHood);
-                            int count_new=0;
-                            MM_count_new=0;
-                            for(int k=0; k<mOpt; k++){
-                                if(GetAgent(MarrowHood[k])==null && !MarrowList.contains(MarrowHood[k])) {
+                            int count_new = 0;
+                            MM_count_new = 0;
+                            for (int k = 0; k < mOpt; k++) {
+                                if (GetAgent(MarrowHood[k]) == null && !MarrowList.contains(MarrowHood[k])) {
                                     MarrowList.add(MarrowHood[k]);
                                     count_new++;
-                                } else if(GetAgent(MarrowHood[k])!=null && GetAgent(MarrowHood[k]).type==MM){
+                                } else if (GetAgent(MarrowHood[k]) != null && GetAgent(MarrowHood[k]).type == MM) {
                                     MM_count_new++;
                                 }
                             }
 
-                            if(count_new>0 || MM_count_new>0) {
+                            if (count_new > 0 || MM_count_new > 0) {
                                 tempEventList.add(GetAgent(RANKLHood[j]));
                             }
                         }
@@ -624,8 +561,8 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             recursionList.clear();
             recursionList.addAll(tempEventList);
             tempEventList.clear();
-        } while(initEventList.size()!=5 && recursionList.size()!=0);
-        if (initEventList.size() != 5 || (MarrowList.size() < 5 && MM_count_new==0)) { //if there is not enough marrow for aOC to form not due to MM taking up space
+        } while (initEventList.size() != 5 && recursionList.size() != 0);
+        if (initEventList.size() != 5 || (MarrowList.size() < 5 && MM_count_new == 0)) { //if there is not enough marrow for aOC to form not due to MM taking up space
             initEventList.clear();
         }
         return initEventList;
@@ -634,14 +571,14 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public ArrayList<BoneCell_2022May17> EndRANKL(ArrayList<BoneCell_2022May17> recursionList) {
         int[] RANKLHood = MooreHood(false);//Needs to be same as InitRANKL
 
-        do{
+        do {
             int rSize = recursionList.size();
             for (int i = 0; i < rSize; i++) { //Number of cells to check Moore neighborhood
-                if(initEventList.size()!=5 && !initEventList.contains(recursionList.get(i))){
+                if (initEventList.size() != 5 && !initEventList.contains(recursionList.get(i))) {
                     initEventList.add(recursionList.get(i));
                     int eOpt = recursionList.get(i).MapOccupiedHood(RANKLHood); //Number of cells in Moore neighborhood
                     for (int j = 0; j < eOpt; j++) { //Determine if cells are Bone lining and are not already in initEventList
-                        if (GetAgent(RANKLHood[j]).RANKL_on==true && !initEventList.contains(GetAgent(RANKLHood[j]))) {
+                        if (GetAgent(RANKLHood[j]).RANKL_on == true && !initEventList.contains(GetAgent(RANKLHood[j]))) {
                             tempEventList.add(GetAgent(RANKLHood[j]));
                         }
                     }
@@ -650,13 +587,13 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             recursionList.clear();
             recursionList.addAll(tempEventList);
             tempEventList.clear();
-        } while(initEventList.size()!=5 && recursionList.size()!=0);
+        } while (initEventList.size() != 5 && recursionList.size() != 0);
         return initEventList;
     }
 
-    public void IterateRANKL(Grid2Ddouble RANKL_xDiffArray, Grid2Ddouble RANKL_yDiffArray){
+    public void IterateRANKL(Grid2Ddouble RANKL_xDiffArray, Grid2Ddouble RANKL_yDiffArray) {
         //Diffusion of RANKL
-        RANKL.Diffusion(RANKL_xDiffArray,RANKL_yDiffArray);
+        RANKL.Diffusion(RANKL_xDiffArray, RANKL_yDiffArray);
 
         //RANKL.Diffusion(RANKL_DiffCoef); //This assumes PERIODIC OR NO-FLUX BOUNDARY CONDITION (need to specify Dirichlet BC otherwise)
 
@@ -671,11 +608,11 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 //        RANKL.MulAll(RANKLi*RANKL_decayRate);
 
         //Production of RANKL
-        for(int x = 0; x < RANKL.xDim; x++) {
+        for (int x = 0; x < RANKL.xDim; x++) {
             for (int y = 0; y < RANKL.yDim; y++) {
-                if (GetAgent(x,y)!=null && GetAgent(x, y).RANKL_on == true && GetAgent(x,y).RANKLtimer<GetAgent(x,y).max_RANKL_on) {
+                if (GetAgent(x, y) != null && GetAgent(x, y).RANKL_on == true && GetAgent(x, y).RANKLtimer < GetAgent(x, y).max_RANKL_on) {
                     //RANKL.Add(x,y,RANKL_productionRate/maxRANKL);
-                    if(RANKL_INHIBITOR && TREATMENT_ON) {
+                    if (RANKL_INHIBITOR && TREATMENT_ON) {
                         RANKL.Add(x, y, RANKLi * RANKL_productionRate / maxRANKL);//*(1-RANKL.Get(x,y)));
                     } else {
                         RANKL.Add(x, y, RANKL_productionRate / maxRANKL);//*(1-RANKL.Get(x,y)));
@@ -699,7 +636,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
     public void IterateTGFB(Grid2Ddouble TGFB_xDiffArray, Grid2Ddouble TGFB_yDiffArray) {
         //Diffusion of TGFB
-        TGFB.Diffusion(TGFB_xDiffArray,TGFB_yDiffArray);
+        TGFB.Diffusion(TGFB_xDiffArray, TGFB_yDiffArray);
 
         //TGFB.Diffusion(TGFB_DiffCoef); //This assumes PERIODIC OR NO-FLUX BOUNDARY CONDITION (need to specify Dirichlet BC otherwise)
 
@@ -715,9 +652,9 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 //        TGFB.MulAll(TGFBi*TGFB_decayRate);
 
         //Production of TGFB
-        for(int x=0;x<TGFB.xDim;x++) {
+        for (int x = 0; x < TGFB.xDim; x++) {
             for (int y = 0; y < TGFB.yDim; y++) {
-                if(TGFB_INHIBITOR && TREATMENT_ON){
+                if (TGFB_INHIBITOR && TREATMENT_ON) {
                     TGFB.Add(x, y, TGFBi * TGFB_basalRate / maxTGFB);
                     if (GetAgent(x, y) != null && GetAgent(x, y).type == aOC && GetAgent(x, y).TGFB_on == true) {
                         TGFB.Add(x, y, TGFBi * TGFB_productionRate / maxTGFB);
@@ -762,16 +699,16 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     }
 
 
-    public void GridTick(){
-        for(int x=0;x<TGFB.xDim;x++) {
+    public void GridTick() {
+        for (int x = 0; x < TGFB.xDim; x++) {
             for (int y = 0; y < TGFB.yDim; y++) {
-                if (extraTGFB[x][y] == true ) {
+                if (extraTGFB[x][y] == true) {
                     TGFBtimer[x][y]++;
                 }
-                if(TGFBtimer[x][y]>=Extra_TGFBtime && GetAgent(x,y)==null){
-                    extraTGFB[x][y]=false;
-                    exposedBone[x][y]=false;
-                    TGFBtimer[x][y]=0;
+                if (TGFBtimer[x][y] >= Extra_TGFBtime && GetAgent(x, y) == null) {
+                    extraTGFB[x][y] = false;
+                    exposedBone[x][y] = false;
+                    TGFBtimer[x][y] = 0;
                     aOC_depth[x][y] = 0;
                     resorbedBone[x][y] = 0;
                 }
@@ -779,7 +716,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
         }
     }
 
-    public void ModelStep(FileIO Write_pOBborn,FileIO Write_pOBdiff, FileIO Write_aOBdeath, FileIO Write_MM_birth_death, FileIO Write_R_MM_clone, int time, List<Integer> RMeventTimes, double [] Cell_Counts) {
+    public void ModelStep(FileIO Write_pOBborn, FileIO Write_pOBdiff, FileIO Write_aOBdeath, FileIO Write_MM_birth_death, FileIO Write_R_MM_clone, int time, List<Integer> RMeventTimes, double[] Cell_Counts) {
 
         //STEP 0: UPDATE GRIDTICK
         GridTick();
@@ -787,65 +724,65 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
         /////////////////////////////////////////////////
         //STEP 1: REACTION-DIFFUSION EQUATION FOR RANKL//
         /////////////////////////////////////////////////
-        int i=0;
+        int i = 0;
         double stol = 1.0e-6;//1e-6; //steady-state tolerance
 
         //RANKL Diffusion coefficient
-        Grid2Ddouble RANKL_xDiffArray = new Grid2Ddouble(xDim,yDim);
-        Grid2Ddouble RANKL_yDiffArray = new Grid2Ddouble(xDim,yDim);
+        Grid2Ddouble RANKL_xDiffArray = new Grid2Ddouble(xDim, yDim);
+        Grid2Ddouble RANKL_yDiffArray = new Grid2Ddouble(xDim, yDim);
 
         RANKL_xDiffArray.SetAll(RANKL_DiffCoef);
         RANKL_yDiffArray.SetAll(RANKL_DiffCoef);
 
-        for(int x=0;x<RANKL.xDim;x++) {
+        for (int x = 0; x < RANKL.xDim; x++) {
             for (int y = 0; y < RANKL.yDim; y++) {
-                if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING) && GetAgent(x,y).RANKL_on==false) {
+                if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING) && GetAgent(x, y).RANKL_on == false) {
                     RANKL_xDiffArray.Set(x, y, 0.1 * RANKL_DiffCoef); //Originally had RANKL_DiffCoef*0.1
-                } else if (x!=xDim-1 && GetAgent(x+1, y) != null && (GetAgent(x+1, y).type == BONE || GetAgent(x+1, y).type == LINING) && GetAgent(x+1,y).RANKL_on==false){
+                } else if (x != xDim - 1 && GetAgent(x + 1, y) != null && (GetAgent(x + 1, y).type == BONE || GetAgent(x + 1, y).type == LINING) && GetAgent(x + 1, y).RANKL_on == false) {
                     RANKL_xDiffArray.Set(x, y, 0.1 * RANKL_DiffCoef); //Originally had RANKL_DiffCoef*0.1
                 }
-                if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING) && GetAgent(x,y).RANKL_on==false) {
+                if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING) && GetAgent(x, y).RANKL_on == false) {
                     RANKL_yDiffArray.Set(x, y, 0.1 * RANKL_DiffCoef); //Originally had RANKL_DiffCoef*0.1
-                } else if (y!=yDim-1 && GetAgent(x, y+1) != null && (GetAgent(x, y+1).type == BONE || GetAgent(x, y+1).type == LINING) && GetAgent(x,y+1).RANKL_on==false){
+                } else if (y != yDim - 1 && GetAgent(x, y + 1) != null && (GetAgent(x, y + 1).type == BONE || GetAgent(x, y + 1).type == LINING) && GetAgent(x, y + 1).RANKL_on == false) {
                     RANKL_yDiffArray.Set(x, y, 0.1 * RANKL_DiffCoef); //Originally had RANKL_DiffCoef*0.1
                 }
             }
         }
 
         //TGFB Diffusion coefficient
-        Grid2Ddouble TGFB_xDiffArray = new Grid2Ddouble(xDim,yDim);
-        Grid2Ddouble TGFB_yDiffArray = new Grid2Ddouble(xDim,yDim);
+        Grid2Ddouble TGFB_xDiffArray = new Grid2Ddouble(xDim, yDim);
+        Grid2Ddouble TGFB_yDiffArray = new Grid2Ddouble(xDim, yDim);
 
         TGFB_xDiffArray.SetAll(TGFB_DiffCoef);
         TGFB_yDiffArray.SetAll(TGFB_DiffCoef);
 
-        for(int x=0;x<TGFB.xDim;x++) {
+        for (int x = 0; x < TGFB.xDim; x++) {
             for (int y = 0; y < TGFB.yDim; y++) {
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     TGFB_xDiffArray.Set(x, y, 0.1 * TGFB_DiffCoef); //Originally had RANKL_DiffCoef*0.1
-                } else if (x!=xDim-1 && GetAgent(x+1, y) != null && (GetAgent(x+1, y).type == BONE || GetAgent(x+1, y).type == LINING)){
+                } else if (x != xDim - 1 && GetAgent(x + 1, y) != null && (GetAgent(x + 1, y).type == BONE || GetAgent(x + 1, y).type == LINING)) {
                     TGFB_xDiffArray.Set(x, y, 0.1 * TGFB_DiffCoef); //Originally had RANKL_DiffCoef*0.1
                 }
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     TGFB_yDiffArray.Set(x, y, 0.1 * TGFB_DiffCoef); //Originally had RANKL_DiffCoef*0.1
-                } else if (y!=yDim-1 && GetAgent(x, y+1) != null && (GetAgent(x, y+1).type == BONE || GetAgent(x, y+1).type == LINING)){
+                } else if (y != yDim - 1 && GetAgent(x, y + 1) != null && (GetAgent(x, y + 1).type == BONE || GetAgent(x, y + 1).type == LINING)) {
                     TGFB_yDiffArray.Set(x, y, 0.1 * TGFB_DiffCoef); //Originally had RANKL_DiffCoef*0.1
                 }
             }
         }
         for (int x = 0; x < CXCL9.xDim; x++) {
             for (int y = 0; y < CXCL9.yDim; y++) {
-                if (GetAgent(x,y)!=null && GetAgent(x, y).type == MM) {
-                    CXCL9.Add(x, y, CXCL9_productionRate/maxCXCL9 );
+                if (GetAgent(x, y) != null && GetAgent(x, y).type == MM) {
+                    CXCL9.Add(x, y, CXCL9_productionRate / maxCXCL9);
                 }
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     CXCL9.Set(x, y, 0.1 * CXCL9_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
-                } else if (x!=xDim-1 && GetAgent(x+1, y) != null && (GetAgent(x+1, y).type == BONE || GetAgent(x+1, y).type == LINING)){
+                } else if (x != xDim - 1 && GetAgent(x + 1, y) != null && (GetAgent(x + 1, y).type == BONE || GetAgent(x + 1, y).type == LINING)) {
                     CXCL9.Set(x, y, 0.1 * CXCL9_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
                 }
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     CXCL9.Set(x, y, 0.1 * CXCL9_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
-                } else if (y!=yDim-1 && GetAgent(x, y+1) != null && (GetAgent(x, y+1).type == BONE || GetAgent(x, y+1).type == LINING)){
+                } else if (y != yDim - 1 && GetAgent(x, y + 1) != null && (GetAgent(x, y + 1).type == BONE || GetAgent(x, y + 1).type == LINING)) {
                     CXCL9.Set(x, y, 0.1 * CXCL9_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
                 }
             }
@@ -860,17 +797,17 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
         for (int x = 0; x < IFNG.xDim; x++) {
             for (int y = 0; y < IFNG.yDim; y++) {
-                if (GetAgent(x,y)!=null && GetAgent(x, y).type == activeTcell ) {
-                    IFNG.Add(x, y, IFNG_productionRate/maxIFNG );
+                if (GetAgent(x, y) != null && GetAgent(x, y).type == activeTcell) {
+                    IFNG.Add(x, y, IFNG_productionRate / maxIFNG);
                 }
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     IFNG.Set(x, y, 0.1 * IFNG_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
-                } else if (x!=xDim-1 && GetAgent(x+1, y) != null && (GetAgent(x+1, y).type == BONE || GetAgent(x+1, y).type == LINING)){
+                } else if (x != xDim - 1 && GetAgent(x + 1, y) != null && (GetAgent(x + 1, y).type == BONE || GetAgent(x + 1, y).type == LINING)) {
                     IFNG.Set(x, y, 0.1 * IFNG_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
                 }
                 if (GetAgent(x, y) != null && (GetAgent(x, y).type == BONE || GetAgent(x, y).type == LINING)) {
                     IFNG.Set(x, y, 0.1 * IFNG_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
-                } else if (y!=yDim-1 && GetAgent(x, y+1) != null && (GetAgent(x, y+1).type == BONE || GetAgent(x, y+1).type == LINING)){
+                } else if (y != yDim - 1 && GetAgent(x, y + 1) != null && (GetAgent(x, y + 1).type == BONE || GetAgent(x, y + 1).type == LINING)) {
                     IFNG.Set(x, y, 0.1 * IFNG_DiffCoef); //Originally had CXCL9_DiffCoef*0.1
                 }
             }
@@ -885,18 +822,18 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
 
         do {
-            IterateRANKL(RANKL_xDiffArray,RANKL_yDiffArray);
-            IterateTGFB(TGFB_xDiffArray,TGFB_yDiffArray);
+            IterateRANKL(RANKL_xDiffArray, RANKL_yDiffArray);
+            IterateTGFB(TGFB_xDiffArray, TGFB_yDiffArray);
             //Iterate
             i++;
-        } while (i<N_TIMESTEP_PDE && Math.max(MaxRdiff,MaxTdiff) >= stol);
+        } while (i < N_TIMESTEP_PDE && Math.max(MaxRdiff, MaxTdiff) >= stol);
 
         //Record overall max TGFB and RANKL (to know how to normalize)
-        if(rmax<RANKL.GetMax()){
-            rmax=RANKL.GetMax();
+        if (rmax < RANKL.GetMax()) {
+            rmax = RANKL.GetMax();
         }
-        if(tmax<TGFB.GetMax()){
-            tmax=TGFB.GetMax();
+        if (tmax < TGFB.GetMax()) {
+            tmax = TGFB.GetMax();
         }
 
         //System.out.println("max RANKL "+rmax);
@@ -909,14 +846,14 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
         CleanShuffle(rn);
         //ShuffleAgents(rn);
-        for (BoneCell_2022May17 c: this) {
+        for (BoneCell_2022May17 c : this) {
             c.CellStep(Write_pOBborn, Write_pOBdiff, Write_aOBdeath, Write_MM_birth_death, Write_R_MM_clone, time, RMeventTimes, Cell_Counts);
         }
 
         /////////////////////////////////
         //STEP 4: INCREASE AGE OF CELLS//
         /////////////////////////////////
-        for (BoneCell_2022May17 c:this){
+        for (BoneCell_2022May17 c : this) {
             c.CellTick();
         }
 
@@ -928,35 +865,35 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     ////////////////////////////
 //
     public void Draw(UIGrid vis, UILabel days, int i) {
-        days.SetText("days: "+i*convert_to_days);
+        days.SetText("days: " + i * convert_to_days);
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
-                if (drawMe != null && drawMe.type==MM && !drawMe.RESISTANT && (drawMe.pOBInCircleHood(drawMe.protect_radius)==true || TGFB.Get(drawMe.Xsq(),drawMe.Ysq())>=drawMe.TGFBthresh)) {
-                    vis.SetPix(x,y, GREEN); //MARROW=LIGHT PINK
-                } else if (drawMe != null && drawMe.type==MM && drawMe.RESISTANT && (drawMe.pOBInCircleHood(drawMe.protect_radius)==true || TGFB.Get(drawMe.Xsq(),drawMe.Ysq())>=drawMe.TGFBthresh)) {
-                    vis.SetPix(x,y, CategorialColor(19)); //MARROW=LIGHT PINK
-                } else if (drawMe != null && drawMe.type==MM && drawMe.RESISTANT==true){
-                    vis.SetPix(x,y, BLACK);
-                } else if (drawMe != null && drawMe.type==MM && drawMe.bcmaLoss==true){
-                    vis.SetPix(x,y, BLACK);
-                }else if (drawMe != null) {
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
+                if (drawMe != null && drawMe.type == MM && !drawMe.RESISTANT && (drawMe.pOBInCircleHood(drawMe.protect_radius) == true || TGFB.Get(drawMe.Xsq(), drawMe.Ysq()) >= drawMe.TGFBthresh)) {
+                    vis.SetPix(x, y, GREEN); //MARROW=LIGHT PINK
+                } else if (drawMe != null && drawMe.type == MM && drawMe.RESISTANT && (drawMe.pOBInCircleHood(drawMe.protect_radius) == true || TGFB.Get(drawMe.Xsq(), drawMe.Ysq()) >= drawMe.TGFBthresh)) {
+                    vis.SetPix(x, y, CategorialColor(19)); //MARROW=LIGHT PINK
+                } else if (drawMe != null && drawMe.type == MM && drawMe.RESISTANT == true) {
+                    vis.SetPix(x, y, BLACK);
+                } else if (drawMe != null && drawMe.type == MM && drawMe.bcmaLoss == true) {
+                    vis.SetPix(x, y, BLACK);
+                } else if (drawMe != null) {
                     //vis.SetPix(x, y, drawMe.color);
                     vis.SetPix(x, y, drawMe.type);
-                } else{
-                    vis.SetPix(x,y, RGB256(240, 220, 220)); //MARROW=LIGHT PINK
+                } else {
+                    vis.SetPix(x, y, RGB256(240, 220, 220)); //MARROW=LIGHT PINK
                 }
             }
         }
-        vis.SetString("Day: "+(int)(i*convert_to_days),1,yDim-1,BLACK, RGB256(240, 220, 220));
+        vis.SetString("Day: " + (int) (i * convert_to_days), 1, yDim - 1, BLACK, RGB256(240, 220, 220));
 
     }
 
     public void DrawCXCL9(UIGrid vis) {
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
-                if(drawMe!=null && drawMe.type==LINING) {
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
+                if (drawMe != null && drawMe.type == LINING) {
                     vis.SetPix(x, y, BONE);//drawMe.type);
                 } else
                     vis.SetPix(x, y, HeatMapRGB(CXCL9.Get(x, y)));
@@ -964,11 +901,12 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             }
         }
     }
+
     public void DrawIFNG(UIGrid vis) {
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
-                if(drawMe!=null && drawMe.type==LINING) {
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
+                if (drawMe != null && drawMe.type == LINING) {
                     vis.SetPix(x, y, BONE);//drawMe.type);
                 } else
                     vis.SetPix(x, y, HeatMapRGB(IFNG.Get(x, y)));
@@ -980,74 +918,50 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public void DrawDivision(UIGrid vis) {
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
                 vis.SetPix(x, y, BLACK);
                 if (drawMe != null) {
 //                    if(drawMe.type==MM && drawMe.color!=MM){
 //                        vis.SetPix(x, y, drawMe.color);
-                    if(drawMe.type==LINING || drawMe.type==BONE) {
+                    if (drawMe.type == LINING || drawMe.type == BONE) {
                         vis.SetPix(x, y, BONE);//drawMe.type);
-                    } else{
+                    } else {
                         vis.SetPix(x, y, BLACK);
                     }
                 }
             }
         }
-        for (int i1 = 0; i1<MM_Division_List.size(); i1++){
-            for(int i2=0; i2<MM_Division_List.get(i1).size(); i2++) {
+        for (int i1 = 0; i1 < MM_Division_List.size(); i1++) {
+            for (int i2 = 0; i2 < MM_Division_List.get(i1).size(); i2++) {
                 vis.SetPix(MM_Division_List.get(i1).get(i2), GREEN);
             }
         }
     }
 
-//    public void DrawDeath(UIGrid vis) {
-//        for (int x = 0; x < xDim; x++) {
-//            for (int y = 0; y < yDim; y++) {
-//                BoneCell_2022May17 drawMe = GetAgent(x,y);
-//                vis.SetPix(x, y, BLACK);
-//                if (drawMe != null) {
-////                    if(drawMe.type==MM && drawMe.color!=MM){
-////                        vis.SetPix(x, y, drawMe.color);
-//                    if(drawMe.type==LINING || drawMe.type==BONE) {
-//                        vis.SetPix(x, y, BONE);//drawMe.type);
-//                    } else{
-//                        vis.SetPix(x, y, BLACK);
-//                    }
-//                }
-//            }
-//        }
-//        for (int i1 = 0; i1<MM_Death_List.size(); i1++){
-//            for(int i2=0; i2<MM_Death_List.get(i1).size(); i2++) {
-//                vis.SetPix(MM_Death_List.get(i1).get(i2), RED);
-//            }
-//        }
-//    }
-
-
-    public static int HeatMapLog(double val){
-        if ((val>=0) && (val<=0.0001)) {
-            return RGB(0,0,0); //black
-        } else if ((val>0.0001) && (val<=0.001)) {
-            return ColorMap(val,0.0001,0.001,RGB(0,0,0),RGB(0,0,255)); //black->blue
-        } else if ((val>0.001) && (val<=0.01)) {
-            return ColorMap(val,0.001,0.01,RGB(0,0,255),RGB(0,206,209));//blue->cyan
-        } else if ((val>0.01) && (val<=0.1)) {
-            return ColorMap(val,0.01,0.1,RGB(0,206,209),RGB(128,0,128));//cyan->purple
-        } else if ((val>0.1) && (val<=1)) {
-            return ColorMap(val,0.1,1,RGB(128,0,128),RGB(255,0,0)); //purple->red
+    public static int HeatMapLog(double val) {
+        if ((val >= 0) && (val <= 0.0001)) {
+            return RGB(0, 0, 0); //black
+        } else if ((val > 0.0001) && (val <= 0.001)) {
+            return ColorMap(val, 0.0001, 0.001, RGB(0, 0, 0), RGB(0, 0, 255)); //black->blue
+        } else if ((val > 0.001) && (val <= 0.01)) {
+            return ColorMap(val, 0.001, 0.01, RGB(0, 0, 255), RGB(0, 206, 209));//blue->cyan
+        } else if ((val > 0.01) && (val <= 0.1)) {
+            return ColorMap(val, 0.01, 0.1, RGB(0, 206, 209), RGB(128, 0, 128));//cyan->purple
+        } else if ((val > 0.1) && (val <= 1)) {
+            return ColorMap(val, 0.1, 1, RGB(128, 0, 128), RGB(255, 0, 0)); //purple->red
         } else {
-            return RGB(255, 255,  255); //white
+            return RGB(255, 255, 255); //white
         }
     }
 
     public void DrawRANKL(UIGrid vis) {
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
-                if(drawMe!=null && drawMe.type==LINING) {
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
+                if (drawMe != null && drawMe.type == LINING) {
                     vis.SetPix(x, y, BONE);//drawMe.type);
                 } else {
-                    vis.SetPix(x, y, HeatMapLog(RANKL.Get(x,y)));
+                    vis.SetPix(x, y, HeatMapLog(RANKL.Get(x, y)));
                 }
             }
         }
@@ -1056,46 +970,46 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     public void DrawTGFB(UIGrid vis) {
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
-                BoneCell_2022May17 drawMe = GetAgent(x,y);
-                if(drawMe!=null && drawMe.type==LINING) {
+                BoneCell_2022May17 drawMe = GetAgent(x, y);
+                if (drawMe != null && drawMe.type == LINING) {
                     vis.SetPix(x, y, BONE);//drawMe.type);
                 } else {
-                    vis.SetPix(x, y, HeatMapLog(TGFB.Get(x,y)));
+                    vis.SetPix(x, y, HeatMapLog(TGFB.Get(x, y)));
                 }
             }
         }
     }
 
 
-    public void RecordRANKL(FileIO PDEwriteHere,int time) {
-        int i=0;
+    public void RecordRANKL(FileIO PDEwriteHere, int time) {
+        int i = 0;
         for (int x = 0; x < xDim; x++) { //x<80
             for (int y = 0; y < yDim; y++) { //y<50
-                RANKLvals[i]=(RANKL.Get(x, y));//RANKL.Get(x+190,y+125)
+                RANKLvals[i] = (RANKL.Get(x, y));//RANKL.Get(x+190,y+125)
                 i++;
             }
         }
-        PDEwriteHere.Write(time+",");
-        PDEwriteHere.WriteDelimit(RANKLvals,",");
+        PDEwriteHere.Write(time + ",");
+        PDEwriteHere.WriteDelimit(RANKLvals, ",");
         PDEwriteHere.Write("\n");
 
     }
 
-    public void RecordTGFB(FileIO PDEwriteHere,int time) {
-        int i=0;
+    public void RecordTGFB(FileIO PDEwriteHere, int time) {
+        int i = 0;
         for (int x = 0; x < xDim; x++) { //x<80
             for (int y = 0; y < yDim; y++) { //y<50
-                TGFBvals[i]=(TGFB.Get(x, y));//RANKL.Get(x+190,y+125)
+                TGFBvals[i] = (TGFB.Get(x, y));//RANKL.Get(x+190,y+125)
                 i++;
             }
         }
-        PDEwriteHere.Write(time+",");
-        PDEwriteHere.WriteDelimit(TGFBvals,",");
+        PDEwriteHere.Write(time + ",");
+        PDEwriteHere.WriteDelimit(TGFBvals, ",");
         PDEwriteHere.Write("\n");
 
     }
 
-    public void RecordBA(FileIO BAwriteHere,int time) {
+    public void RecordBA(FileIO BAwriteHere, int time) {
 
         for (BoneCell_2022May17 c : this) {
             if (c.type == BONE || c.type == LINING) {
@@ -1103,31 +1017,60 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
             }
         }
 
-        BAwriteHere.Write(time+",");
-        BAwriteHere.WriteDelimit(BA_index,",");
+        BAwriteHere.Write(time + ",");
+        BAwriteHere.WriteDelimit(BA_index, ",");
         BAwriteHere.Write("\n");
 
     }
 
-    public void RecordClones(FileIO writeHere,int time){
+    public void RecordClones(FileIO writeHere, int time) {
         //int ct_BONE = 0, ct_pOB = 0, ct_aOB = 0, ct_pOC = 0, ct_aOC = 0, ct_MSC = 0, ct_LINING = 0;
         int[] cts = new int[R_MM_ID_counter];
 
         for (BoneCell_2022May17 c : this) {
-            if(c.type==MM && c.RESISTANT) {
-                cts[c.R_MM_ID-1]++;
+            if (c.type == MM && c.RESISTANT) {
+                cts[c.R_MM_ID - 1]++;
             }
         }
         //population of one timestep per line
         //writeHere.Write(ct_BONE+","+ct_pOB+","+ct_aOB+","+ct_pOC+","+ct_aOC+","+ct_MSC+","+ct_LINING+"\n");
-        writeHere.Write(time+",");
-        writeHere.WriteDelimit(cts,",");
+        writeHere.Write(time + ",");
+        writeHere.WriteDelimit(cts, ",");
         writeHere.Write("\n");
+    }
+
+    public void RecordTumorCells(int time) {
+        int standardMM = 0, resistantMM = 0, bcmaLossMM = 0;
+
+        for (BoneCell_2022May17 c : this) {
+            if (c.type == MM && !c.RESISTANT && !c.bcmaLoss) {
+                standardMM++;
+            } else if (c.type == MM && c.RESISTANT) {
+                resistantMM++;
+            } else if (c.type == MM && c.bcmaLoss) {
+                bcmaLossMM++;
+            }
+        }
+        // Write tumor cell counts to the file
+        tumorCellOut.Write((time / (24 * 60)) + "," + standardMM + "," + resistantMM + "," + bcmaLossMM + "\n");
+    }
+
+    public void RunSimulation() {
+        for (int time = 0; time < numSteps; time++) {
+
+            // Write tumor cell data once per simulated day
+            if (time % (24 * 60) == 0) {
+                RecordTumorCells(time);
+            }
+        }
+
+        // Close the file at the end of the simulation
+        tumorCellOut.Close();
     }
 
     public void RecordOut(FileIO writeHere,int time, boolean treatment_on, boolean btz, boolean myeloma){
         //int ct_BONE = 0, ct_pOB = 0, ct_aOB = 0, ct_pOC = 0, ct_aOC = 0, ct_MSC = 0, ct_LINING = 0;
-        int[] cts = new int[13];
+        int[] cts = new int[14];
 
         for (BoneCell_2022May17 c : this) {
             if(c.type == BONE){
@@ -1166,7 +1109,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                 cts[12]++;
             }
             else if(c.type == bystander_TIL){
-            cts[13]++;
+                cts[13]++;
             }
 
         }
@@ -1258,6 +1201,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public static void main(String[] args) {
+        int time = 0;
 
 //        boolean HEADLESS = true; //use true with cluster
 
@@ -1364,11 +1308,11 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 //            String projPath = PWD() + "/Bone/";
                     String projPath = subfolder; //PWD() + subfolder;
                     GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
-                    GifMaker gm_RANKL_vis = new GifMaker(projPath.concat("/").concat("RANKLVid").concat(".gif"), 100, true);
-                    GifMaker gm_TGFB_vis = new GifMaker(projPath.concat("/").concat("TGFBVid").concat(".gif"), 100, true);
+//                    GifMaker gm_RANKL_vis = new GifMaker(projPath.concat("/").concat("RANKLVid").concat(".gif"), 100, true);
+//                    GifMaker gm_TGFB_vis = new GifMaker(projPath.concat("/").concat("TGFBVid").concat(".gif"), 100, true);
 //                    GifMaker gm_MMDiv_vis = new GifMaker(projPath.concat("/").concat("MMDivVid").concat(".gif"), 100, true);
 //                    GifMaker gm_MMDeath_vis = new GifMaker(projPath.concat("/").concat("MMDeathVid").concat(".gif"), 100, true);
-                    GifMaker gm_CXCL9_vis = new GifMaker(projPath.concat("/").concat("CXCL9").concat(".gif"), 100, true);
+//                    GifMaker gm_CXCL9_vis = new GifMaker(projPath.concat("/").concat("CXCL9").concat(".gif"), 100, true);
                     GifMaker gm_IFNG_vis = new GifMaker(projPath.concat("/").concat("IFNG").concat(".gif"), 100, true);
 
                     // RECORD OUTPUT
@@ -1385,11 +1329,6 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                         Bone_Filename = "Bone/BAout_2020May5_Sim14.csv";
                     }
                     BoneGrid_2022May17 g = new BoneGrid_2022May17(xDim, yDim, new Rand(), Bone_Filename); //set seed to reproduce results
-
-
-                    //BoneGrid_2022May17 g = new BoneGrid_2022May17(xDim, yDim, new Rand(), "Bone/BAout_2020May5_Sim14.csv"); //Create instance of BoneGrid class (grid)
-                    //Create instance of BoneGrid class (grid)
-                    //Rand(seed:1) when want to reproduce results
 
                     //Set treatment schedule
                     ArrayList<Double> Tx_subStart = new ArrayList<>();
@@ -1483,6 +1422,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                             int InitTregs = 26; // Number of suppressor Tcells to place
                             int j = 0; // Counter for successfully placed T-cells
                             int k = 0; // Counter for successfully placed T-cells
+                            int l= 0;
                             int maxAttempts = 1000; // Prevent infinite loops
                             int attempts = 0; // Counter for total attempts
 
@@ -1521,7 +1461,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                                 }
                             }
                             // 🔹 Bystander T cell placement (same probability as active T cells)
-                            while (j < InitBystanderTcells && attempts < maxAttempts) {
+                            while (l < InitBystanderTcells && attempts < maxAttempts) {
                                 attempts++;
 
                                 int randomVessLocation = vessLocations.get(rand.nextInt(vessLocations.size()));
@@ -1539,7 +1479,7 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
                                             c.type = bystander_TIL; // Place as a bystander T cell
 
                                             // Bystander T cells do NOT express PD-1, so no need for Gaussian assignment
-                                            j++; // Increment only if placement is successful
+                                            l++; // Increment only if placement is successful
                                         }
                                     }
                                 }
@@ -1783,11 +1723,11 @@ public class BoneGrid_2022May17 extends AgentGrid2D<BoneCell_2022May17> implemen
 
                     //Close GifMaker
                     gm_Cell_vis.Close();
-                    gm_RANKL_vis.Close();
-                    gm_TGFB_vis.Close();
+//                    gm_RANKL_vis.Close();
+//                    gm_TGFB_vis.Close();
 //                    gm_MMDiv_vis.Close();
 //                    gm_MMDeath_vis.Close();
-                    gm_CXCL9_vis.Close();
+//                    gm_CXCL9_vis.Close();
 
                     //Close UIWindow
                     if (!HEADLESS) {
@@ -3940,3 +3880,4 @@ class BoneCell_2022May17 extends AgentSQ2Dunstackable<BoneGrid_2022May17> {
         }
     }
 }
+
