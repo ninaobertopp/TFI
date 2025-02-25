@@ -17,8 +17,8 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (210*24.0);
-    public final static int ITERATIONS = 3; // number of times the model will run
+    public final static double STEPS = (42*24.0);
+    public final static int ITERATIONS = 10; // number of times the model will run
     public static boolean VISUALS = true; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
@@ -31,8 +31,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {-1, 41, 83, 125, 167};//there's a bug here: need to put start-1; {-1, 13}
-    double[] TCE_Duration = {29, 29, 29, 29}; //there's a bug here: need to put duration+1; {8, 8}
+    double[] TCE_start = {0, 6, 12, 18, 24}; //{-1, 13}; {-1, 5, 11, 17, 23}
+    double[] TCE_Duration = {3, 3, 3, 3, 3}; //{8, 8}; {4, 4, 4, 4, 4}
 
     public Rand rn = new Rand();
 
@@ -41,37 +41,27 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     ////////////////////
     //GRID CONSTRUCTOR//
     ////////////////////
-    public double boundedGaussian(double mean, double dev, double min, double max) {
-        double gauss = rn.Gaussian(0, 1);
-        double val = dev * gauss + mean;
-        while (val > max || val < min) {
-            gauss = rn.Gaussian(0, 1);
-            val = dev * gauss + mean;
-        }
-        return val;
-    }
     public gridLattice(int xDim, int yDim, String outFileName) {
+        //Calls the constructor of the parent class (AgentGrid2D).
         super(xDim, yDim, agentLattice.class, true, true);
         output = new FileIO(outFileName, "w");
         output.Write("Time,TCELLS, EXTCELLS, TUMOR, Inactive Tcells" + "\n");
         double totalArea = xDim * yDim;
-        double blackBoxArea = 0.129 * totalArea;
-        int sideLength = (int) Math.sqrt(blackBoxArea);
-        // Calculate the center of the grid
-        int centerX = xDim / 2;
-        int centerY = yDim / 2;
-        // Calculate the top-left corner of the black box
-        int startX = centerX - sideLength / 2;
-        int startY = centerY - sideLength / 2;
 
+// placing 40 myeloma cells (a type of tumor cell) on the grid while ensuring that no two cells are placed in the same position.
         for (int i = 0; i < 40; i++) {
             // ecruitecruit one myeloma cell within 10 grid spaces from the bone
             int myelomaX, myelomaY;
             do {
+                //Randomly generate the x and y coordinates for placing the cell.
+                //rn is a random number generator, and Int(xDim) produces a random integer between 0 and xDim - 1 (similarly for yDim).
                 myelomaX = rn.Int(xDim);
                 myelomaY = rn.Int(yDim);
             }
+            //PopAt(myelomaX, myelomaY): Checks if there is already a cell (or agent) at the randomly chosen coordinates.
+            //The do...while loop ensures that if the chosen position is occupied (PopAt(...) > 0), new random coordinates are generated until an unoccupied position is found.
             while (PopAt(myelomaX, myelomaY) > 0);
+            //Once an unoccupied position is found, a new instance of agentLattice (representing a cell) is created at the specified grid square (myelomaX, myelomaY) using the NewAgentSQ method.
             agentLattice c = NewAgentSQ(myelomaX, myelomaY);
             c.type = Tumor;
             c.SetCellColor();
@@ -83,19 +73,22 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     ////////////////
     //GRID METHODS//
     ////////////////
+    //VISUALIZATION
     public void Draw(UIGrid vis) {
+        //Loop through all GRID cells
         for (int x = 0; x < xDim; x++) {
             for (int y = 0; y < yDim; y++) {
                 agentLattice drawMe = GetAgent(x, y);
                 if (drawMe != null) {
                     vis.SetPix(x, y, drawMe.color);
                 } else {
+                    //background color
                     vis.SetPix(x, y, RGB256(240, 220, 220));
                 }
             }
         }
     }
-
+    //Output numbers of cell populations
     public double[] CellCounts() {
         double[] counts = new double[4];
         for (agentLattice c : this) {
@@ -137,7 +130,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
         java.util.Date now = new java.util.Date();
         String date_time = dateFormat.format(now);
-        int numIterations = ITERATIONS; // Change this value to specify the number of iterations
+        int numIterations = ITERATIONS;
+        System.out.println("Starting simulation for " + numIterations + " iterations...");
         while (j < numIterations){
             double day=0;
             String save = new String();
@@ -157,24 +151,22 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             // OUTPUT FILES
             // Generate a unique file name using the simulation index and timestamp
             String timestamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
-            String path_to_output_file = output_dir.concat("/").concat("CellCounts_Simulation_" + j + "_" + timestamp + ".csv");
+            //String path_to_output_file = output_dir.concat("/").concat("CellCounts_Simulation_" + j + "_" + timestamp + ".csv");
 
-//            String path_to_output_file = output_dir.concat("/").concat("CellCounts_" + j).concat(".csv");
+            //String path_to_output_file = output_dir.concat("/").concat("CellCounts_" + j).concat(".csv");
+            String path_to_output_file = output_dir.concat("/").concat("CellCounts_Simulation_" + j + "_" + System.currentTimeMillis() + ".csv");
+
             // OUTPUT WINDOW
             UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
             //UIGrid CXCL9_vis = new UIGrid(xDim, yDim, 4,2,5);
-            UIWindow win = new UIWindow("");
+            UIWindow win = new UIWindow("TCE_TFI");
             win.AddCol(0, new UILabel("Cells"));
             win.AddCol(0, Cell_vis);
-            win.AddCol(2, new UILabel("CXCl9"));
-            //win.AddCol(2, CXCL9_vis);
             win.RunGui();
             GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
-            //GifMaker gm_CXCL9_vis = new GifMaker(projPath.concat("/").concat("CXCL9Vid").concat(".gif"), 100, true);
             // GRID
             gridLattice g = new gridLattice(xDim, yDim, path_to_output_file);
             boolean initial_recruitment = true;
-
             // Initialize variables to store counts for specific days
             double[] countsOnDay14 = new double[4];
             double[] countsOnDay28 = new double[4];
@@ -183,7 +175,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 timeStep = i;
                 g.TCE_ON = false;
                 for (int k = 0; k < g.TCE_start.length; k++) {
-                    if (day > g.TCE_start[k] && day < g.TCE_start[k] + g.TCE_Duration[k]) {
+                    if (day >= g.TCE_start[k] && day <= g.TCE_start[k] + g.TCE_Duration[k] - 1) {
                         g.TCE_ON = true;
                         //System.out.println("TCE_ON set to true at day: " + day + ", timeStep: " + timeStep + ", duration index: " + k);
                     }
@@ -254,21 +246,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 }
 
 
-//                    int m = 0;
-//                    while (m < g.InitexhaustedTcells) {
-//                        int xinit = g.rn.Int(xDim);
-//                        int yinit = g.rn.Int(yDim);
-//                        while (g.PopAt(xinit, yinit) > 0) {
-//                            xinit = g.rn.Int(xDim);
-//                            yinit = g.rn.Int(yDim);
-//                        }
-//                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-//                        agentLattice c = g.NewAgentSQ(xinit, yinit);
-//                        c.type = exhaustedTcells;
-//                        c.SetCellColor();
-//                        m++;
-//                    }
-
                 g.ModelStep(timeStep, day);
                 // GRAPHICAL OUTPUT
                 if (VISUALS) {
@@ -281,7 +258,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 } else if (i == 28 * 24) { // Day 28
                     countsOnDay28 = cell_count;
                 }
-
                 // OTHER OUTPUT
                 if (i % 24.0 == 0) {
                     System.out.println("Day " + day);
@@ -325,7 +301,6 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     double tcellAge = 0; // used for tracking the age of a tcell
     double hours_since_kill = 0; // hours since a tcell last killed a tumor cell
     double hours_since_division = 0; //days since the Tcell has divided
-    boolean BCMA = true; // used for whether or not a tumor cell is expressing bcma
     ////////////////
     //CELL METHODS//
     ////////////////
