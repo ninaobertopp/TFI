@@ -34,7 +34,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     double[] TCE_start = {}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
     double[] TCE_Duration = {}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
     public static boolean chemo_on = true; // Chemotherapy switch
-    public static double chemo_start = 10; // Example: starts on day 10
+    public static double chemo_start = 1; // Example: starts on day 10
     public static double chemo_duration = 1; // Example: lasts 2 days
     public int chemo_effect_remaining = 0; // Number of hours chemo is still active
 
@@ -279,15 +279,15 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             System.out.println("Counts on Day 14: Tumor = " + countsOnDay14[2] + ", Active T-cells = " + countsOnDay14[0] +", Inactive T-cells = " + countsOnDay14[3] + ", exhausted T-cells = " + countsOnDay14[1]);
             System.out.println("Counts on Day 28: Tumor = " + countsOnDay28[2] + ", Active T-cells = " + countsOnDay28[0] +", Inactive T-cells = " + countsOnDay28[3] + ", exhausted T-cells = " + countsOnDay28[1]);
             g.output.Close();
-            gm_Cell_vis.Close();
             win.Close();
-
+            gm_Cell_vis.Close();
             if (j < numIterations){
                 System.out.println("Current Iteration: " + j);}
             j++;
         }
     }
 }
+
 //////////////
 //CELL CLASS//
 //////////////
@@ -395,7 +395,8 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             this.hours_since_kill = 0; // Reset kill timer
                             // Division logic
                             double divisionProb = 0.8; // Example division probability
-                            if (G.rn.Double() < divisionProb) {
+                            // Prevent proliferation if chemo is on or its effect is still active (48h after onset)
+                            if (G.chemo_effect_remaining == 0 && G.rn.Double() < divisionProb){
                                 if (emptyNeighbors > 0) {
                                     for (int i = 0; i < emptyNeighbors; i++) {
                                         int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
