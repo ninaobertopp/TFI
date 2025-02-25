@@ -17,7 +17,7 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (42*24.0);
+    public final static double STEPS = (28*24.0);
     public final static int ITERATIONS = 10; // number of times the model will run
     public static boolean VISUALS = true; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
@@ -31,8 +31,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {0, 6, 12, 18, 24}; //{-1, 13}; {-1, 5, 11, 17, 23}
-    double[] TCE_Duration = {3, 3, 3, 3, 3}; //{8, 8}; {4, 4, 4, 4, 4}
+    double[] TCE_start = {}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
+    double[] TCE_Duration = {}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    public static boolean chemo_on = true; // Chemotherapy switch
+    public static double chemo_start = 10; // Example: starts on day 10
+    public static double chemo_duration = 1; // Example: lasts 2 days
+    public int chemo_effect_remaining = 0; // Number of hours chemo is still active
+
 
     public Rand rn = new Rand();
 
@@ -181,31 +186,20 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                     }
                 }
 
+                g.chemo_on = (day >= chemo_start && day < chemo_start + chemo_duration);
+                if (day == chemo_start) {
+                    g.chemo_effect_remaining = 48; // Chemo effect lasts for 48 hours
+                }
+                if (g.chemo_effect_remaining > 0) {
+                    g.chemo_effect_remaining--; // Count down chemo effect
+                }
+
+
                 if (VISUALS) {
                     win.TickPause(100); //slows or speeds up the video frame rate
                 }
                 // COUNT CURRENT POPULATION
                 double[] cell_count = g.CellCounts();
-//                if (cell_count[2] > 200) {
-//                    if (initial_recruitment) {
-//                        int InitTcells = g.InitactiveTcell;
-//                        int k = 0;
-//                        while (k < InitTcells) {
-//                            int xinit = g.rn.Int(xDim);
-//                            int yinit = g.rn.Int(yDim);
-//                            while (g.PopAt(xinit, yinit) > 0) {
-//                                xinit = g.rn.Int(xDim);
-//                                yinit = g.rn.Int(yDim);
-//                            }
-//                            // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-//                            agentLattice c = g.NewAgentSQ(xinit, yinit);
-//                            c.type = activeTcell;
-//                            c.SetCellColor();
-//                            k++;
-//                        }
-//                    }
-//                    initial_recruitment = false;
-//                }
                 //This ensures that the initialization of inactive T cells only occurs at the start of the simulation (i.e., when timeStep is 0).
                 if (timeStep == 0) {
                     int k = 0;
@@ -271,10 +265,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                     if (g.TCE_ON == false){
                         System.out.println("TCE_ON = false");
                     }
-//                    if(initial_recruitment == true){
-//                        System.out.println("initial_recruitment = true");
-//                    }
 
+                    if (g.chemo_on == true){
+                        System.out.println("chemo_on = true");
+                    }
+                    if (g.chemo_on == false){
+                        System.out.println("chemo_on = false");
+                    }
                 }
             }
 
@@ -308,6 +305,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     final public static int exhausted = RGB256(200, 50, 250); //exhausted tcell color
     final public static int cancer = RGB256(47, 32, 66); // tumor cell color
     final public static int inactivetcell = RGB256(255, 165, 0);
+
     public static int CategorialColor(int index) {
         switch (index) {
             case activeTcell:
@@ -326,6 +324,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     void SetCellColor() {
         color = CategorialColor((int) Math.round(0 + type));
     }
+
     void Tcell_Kill() {
         if (type == Tumor) {
             this.Dispose();
@@ -390,8 +389,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             G.GetAgent(movdivHood[j]).Tcell_Kill();
                             if (G.TCE_ON) {
                                 this.pd_1 += 1;
-                            }
-                            else {
+                            } else {
                                 this.pd_1 += 0.5;
                             }
                             this.hours_since_kill = 0; // Reset kill timer
@@ -440,14 +438,28 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 }
             }
         }
+
         if (type == Tumor) {
-//            STEP 1: death
-            if (G.rn.Double() < ProbScale(G.Tumor_DEATH_PROB, 1)) {
+            // Default tumor death probability (without chemo)
+            double adjusted_death_prob = G.Tumor_DEATH_PROB;
+            double adjusted_prolif_prob = G.Tumor_PROLIFERATION_PROB;
+
+            if (G.chemo_on || G.chemo_effect_remaining > 0) {
+                // Ensure that after 48 hours, viability is 33%
+                double target_survival_24h = 0.33; // 33% of tumor cells survive after 48h
+                adjusted_death_prob = 1 - Math.pow(target_survival_24h, 1.0 / 48); // Calculate correct hourly death probability
+
+                // Reduce tumor proliferation (e.g., slow division by 50%)
+                adjusted_prolif_prob *= 0.0;
+            }
+
+            if (G.rn.Double() < ProbScale(adjusted_death_prob,1)) {
                 Dispose();
                 return;
             }
+
             //STEP 2: division
-            if (G.rn.Double() < ProbScale(G.Tumor_PROLIFERATION_PROB, 1)) {
+            if (G.rn.Double() < ProbScale(adjusted_prolif_prob, 1)) {
                 int[] divHood = MooreHood(true);
                 int emptyNeighbors = MapEmptyHood(divHood);
                 //Create new Agent
@@ -458,6 +470,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 }
             }
         }
+
 
         if (type == inactiveTcell) {
             boolean agedDeath = false; // Track if the T cell is aged and should die
