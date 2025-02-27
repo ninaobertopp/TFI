@@ -30,6 +30,7 @@ import static HAL.Util.*;
 //      Mahmood, Khalid, Muhammad Ubaid, and Syeda Taliya Rizvi. "Multiple Osteolytic Lesions Causing Hypercalcemia: A Rare Presentation of Acute Lymphoblastic Leukemia." Case Reports in Medicine, vol. 2017, 2017, Article 2347810. Wiley Online Library, https://doi.org/10.1155/2017/2347810.
 //
 // Start with a mix of bystander TIL (inactive T cells); active Tcells and exhausted T cells
+// Physiological BM it's 2.5% CD8 --> find out in ALL BM
 //
 // Active T cells different amount of PD-1
 //
@@ -40,6 +41,7 @@ import static HAL.Util.*;
 // TCE responds according to in vivo paper
 //
 // Add Tregs
+// 9.6% of CD4 in ALL-BM are Tregs, ; what's the CD4/CD8 ratio? --> 1:1 in physiological setting
 
 
 //////////////
@@ -54,6 +56,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
     public final static int Tumor = 2; // tumor cell
     public final static int inactiveTcell = 6; // inactive tcells
+    public final static int Tregs = 5;
     public final int InitactiveTcell =1; //IN VITRO initial number of active tcells
     public final int InitinactiveTcells = 20; //IN VITRO initial number of inactive tcells
     public final int InitexhaustedTcells = 0; // initial number of exhausted tcells
@@ -61,8 +64,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
-    double[] TCE_Duration = {}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    double[] TCE_start = {1}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
+    double[] TCE_Duration = {28}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -96,9 +99,10 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         }
 // Initialize T cells: 2.5% of the grid area
         int numTCells = (int)(totalArea * 0.025); // 2.5% of grid area
-        int numInactiveTCells = (int)(numTCells * 0.50); // 50% Inactive T Cells
-        int numActiveTCells = (int)(numTCells * 0.30); // 30% Active T Cells
-        int numExhaustedTCells = (int)(numTCells * 0.20); // 20% Exhausted T Cells
+        int numInactiveTCells = (int)(numTCells * 0.80);
+        int numActiveTCells = (int)(numTCells * 0.10);
+        int numExhaustedTCells = (int)(numTCells * 0.10);
+        int numTregs = (int)(numTCells * 0.096);
 
 // Place inactive T cells (50% of total T cells)
         for (int i = 0; i < numInactiveTCells; i++) {
@@ -122,6 +126,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             agentLattice c = NewAgentSQ(xinit, yinit);
             c.type = activeTcell;
             c.SetCellColor();
+            // Assign a random PD-1 value between 0 and 5 to each active T cell
+            c.pd_1 = rn.Double() * 5;  // Random number between 0 and 5
         }
 
 // Place exhausted T cells (20% of total T cells)
@@ -133,6 +139,18 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
             agentLattice c = NewAgentSQ(xinit, yinit);
             c.type = exhaustedTcells;
+            c.SetCellColor();
+        }
+
+        // Initialize Tregs
+        for (int i = 0; i < numTregs; i++) {
+            int xinit, yinit;
+            do {
+                xinit = rn.Int(xDim);
+                yinit = rn.Int(yDim);
+            } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
+            agentLattice c = NewAgentSQ(xinit, yinit);
+            c.type = Tregs;
             c.SetCellColor();
         }
 
@@ -399,6 +417,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     final public static int exhausted = RGB256(200, 50, 250); //exhausted tcell color
     final public static int cancer = RGB256(47, 32, 66); // tumor cell color
     final public static int inactivetcell = RGB256(255, 165, 0);
+    final public static int treg = RGB256(128, 0, 32);
 
     public static int CategorialColor(int index) {
         switch (index) {
@@ -410,6 +429,8 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 return cancer;
             case inactiveTcell:
                 return inactivetcell;
+            case Tregs:
+                return treg;
             default:
                 throw new IllegalArgumentException("index outside color category range index: " + index);
         }
@@ -591,6 +612,29 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 if (agedDeath) {
                     break;
                 }
+            }
+        }
+        if (type == Tregs) {
+            int[] movdivHood = MooreHood(true);
+            int emptyNeighbors = MapEmptyHood(movdivHood);
+
+            // Suppression of active T cells
+            int[] hood = MooreHood(false);
+            int options = MapOccupiedHood(hood);
+            for (int j = 0; j < options; j++) {
+                agentLattice neighbor = G.GetAgent(hood[j]);
+                if (neighbor != null && neighbor.type == activeTcell) {
+                    if (G.rn.Double() < 0.2) { // 20% chance to turn inactive
+                        neighbor.type = exhaustedTcells;
+                        neighbor.SetCellColor();
+                    }
+                }
+            }
+
+            // Move Tregs randomly
+            if (emptyNeighbors > 0) {
+                int chosenIndex = G.rn.Int(emptyNeighbors);
+                MoveSQ(movdivHood[chosenIndex]);
             }
         }
     }
