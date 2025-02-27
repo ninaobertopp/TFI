@@ -13,6 +13,36 @@ import static TCE_TFI.gridLattice.*;
 import static HAL.Util.*;
 
 //////////////
+////LOG//////
+/////////////
+//02/25/2025 Added Chemo-Therapy
+
+//////////////
+////TO-DO////
+/////////////
+//Turn in vitro to in vivo:
+
+//Start with higher number tumor cells
+//What is the ratio of Leukemic Blast Cells to T cells in in bone marrow of ALL patient?
+//  Blast cells in the bone marrow are typically between 25 and 95% in patients with ALL.
+//      Source: Emadi, A., & York Law, J. (2023). Acute lymphoblastic leukemia (ALL). In Merck Manual (Professional Edition). Merck & Co. https://www.merckmanuals.com/professional/hematology-and-oncology/leukemias/acute-lymphoblastic-leukemia-all
+//  31%
+//      Mahmood, Khalid, Muhammad Ubaid, and Syeda Taliya Rizvi. "Multiple Osteolytic Lesions Causing Hypercalcemia: A Rare Presentation of Acute Lymphoblastic Leukemia." Case Reports in Medicine, vol. 2017, 2017, Article 2347810. Wiley Online Library, https://doi.org/10.1155/2017/2347810.
+//
+// Start with a mix of bystander TIL (inactive T cells); active Tcells and exhausted T cells
+//
+// Active T cells different amount of PD-1
+//
+// Blood vessels
+//
+// Recruitment of T cells from blood vessels
+//
+// TCE responds according to in vivo paper
+//
+// Add Tregs
+
+
+//////////////
 //GRID CLASS//
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
@@ -24,8 +54,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
     public final static int Tumor = 2; // tumor cell
     public final static int inactiveTcell = 6; // inactive tcells
-    public final int InitactiveTcell =1; // initial number of active tcells
-    public final int InitinactiveTcells = 20; //initial number of inactive tcells
+    public final int InitactiveTcell =1; //IN VITRO initial number of active tcells
+    public final int InitinactiveTcells = 20; //IN VITRO initial number of inactive tcells
     public final int InitexhaustedTcells = 0; // initial number of exhausted tcells
     final static double Tumor_PROLIFERATION_PROB = 1.0 / 24; //cancer cell division rate
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
@@ -33,9 +63,9 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     boolean TCE_ON = false; // switching on tce therapy
     double[] TCE_start = {}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
     double[] TCE_Duration = {}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
-    public static boolean chemo_on = true; // Chemotherapy switch
-    public static double[] chemo_start_times = {5, 10}; // Multiple chemo starts (e.g., day 1, 10, and 20)
-    public static double chemo_duration = 1; // Each cycle lasts 1 day
+    public static boolean chemo_on = true;// Chemotherapy switch
+    public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
+    public static double chemo_duration = 0; // Each cycle lasts 1 day
     public static int chemo_effect_remaining = 0; // Tracks post-chemo effect
 
 
@@ -52,26 +82,79 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         output = new FileIO(outFileName, "w");
         output.Write("Time,TCELLS, EXTCELLS, TUMOR, Inactive Tcells" + "\n");
         double totalArea = xDim * yDim;
-
-// placing 40 myeloma cells (a type of tumor cell) on the grid while ensuring that no two cells are placed in the same position.
-        for (int i = 0; i < 40; i++) {
-            // ecruitecruit one myeloma cell within 10 grid spaces from the bone
-            int myelomaX, myelomaY;
+        // Initialize Tumor cells: 30% of the grid area
+        int numTumorCells = (int)(totalArea * 0.9); // 30% of grid
+        for (int i = 0; i < numTumorCells; i++) {
+            int xinit, yinit;
             do {
-                //Randomly generate the x and y coordinates for placing the cell.
-                //rn is a random number generator, and Int(xDim) produces a random integer between 0 and xDim - 1 (similarly for yDim).
-                myelomaX = rn.Int(xDim);
-                myelomaY = rn.Int(yDim);
-            }
-            //PopAt(myelomaX, myelomaY): Checks if there is already a cell (or agent) at the randomly chosen coordinates.
-            //The do...while loop ensures that if the chosen position is occupied (PopAt(...) > 0), new random coordinates are generated until an unoccupied position is found.
-            while (PopAt(myelomaX, myelomaY) > 0);
-            //Once an unoccupied position is found, a new instance of agentLattice (representing a cell) is created at the specified grid square (myelomaX, myelomaY) using the NewAgentSQ method.
-            agentLattice c = NewAgentSQ(myelomaX, myelomaY);
-            c.type = Tumor;
+                xinit = rn.Int(xDim);  // Accessing rn through the grid
+                yinit = rn.Int(yDim);  // Accessing rn through the grid
+            } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
+            agentLattice c = NewAgentSQ(xinit, yinit);
+            c.type = Tumor; // Tumor cell type
             c.SetCellColor();
-            // !!Place T-cells adjacent to myeloma cells if TCE is on!!
         }
+// Initialize T cells: 2.5% of the grid area
+        int numTCells = (int)(totalArea * 0.025); // 2.5% of grid area
+        int numInactiveTCells = (int)(numTCells * 0.50); // 50% Inactive T Cells
+        int numActiveTCells = (int)(numTCells * 0.30); // 30% Active T Cells
+        int numExhaustedTCells = (int)(numTCells * 0.20); // 20% Exhausted T Cells
+
+// Place inactive T cells (50% of total T cells)
+        for (int i = 0; i < numInactiveTCells; i++) {
+            int xinit, yinit;
+            do {
+                xinit = rn.Int(xDim);
+                yinit = rn.Int(yDim);
+            } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
+            agentLattice c = NewAgentSQ(xinit, yinit);
+            c.type = inactiveTcell;
+            c.SetCellColor();
+        }
+
+// Place active T cells (30% of total T cells)
+        for (int i = 0; i < numActiveTCells; i++) {
+            int xinit, yinit;
+            do {
+                xinit = rn.Int(xDim);
+                yinit = rn.Int(yDim);
+            } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
+            agentLattice c = NewAgentSQ(xinit, yinit);
+            c.type = activeTcell;
+            c.SetCellColor();
+        }
+
+// Place exhausted T cells (20% of total T cells)
+        for (int i = 0; i < numExhaustedTCells; i++) {
+            int xinit, yinit;
+            do {
+                xinit = rn.Int(xDim);
+                yinit = rn.Int(yDim);
+            } while (PopAt(xinit, yinit) > 0); // Ensure no overlap
+            agentLattice c = NewAgentSQ(xinit, yinit);
+            c.type = exhaustedTcells;
+            c.SetCellColor();
+        }
+
+//// IN VITRO placing 40 myeloma cells (a type of tumor cell) on the grid while ensuring that no two cells are placed in the same position.
+//        for (int i = 0; i < 40; i++) {
+//            // ecruitecruit one myeloma cell within 10 grid spaces from the bone
+//            int myelomaX, myelomaY;
+//            do {
+//                //Randomly generate the x and y coordinates for placing the cell.
+//                //rn is a random number generator, and Int(xDim) produces a random integer between 0 and xDim - 1 (similarly for yDim).
+//                myelomaX = rn.Int(xDim);
+//                myelomaY = rn.Int(yDim);
+//            }
+//            //PopAt(myelomaX, myelomaY): Checks if there is already a cell (or agent) at the randomly chosen coordinates.
+//            //The do...while loop ensures that if the chosen position is occupied (PopAt(...) > 0), new random coordinates are generated until an unoccupied position is found.
+//            while (PopAt(myelomaX, myelomaY) > 0);
+//            //Once an unoccupied position is found, a new instance of agentLattice (representing a cell) is created at the specified grid square (myelomaX, myelomaY) using the NewAgentSQ method.
+//            agentLattice c = NewAgentSQ(myelomaX, myelomaY);
+//            c.type = Tumor;
+//            c.SetCellColor();
+//            // !!Place T-cells adjacent to myeloma cells if TCE is on!!
+//        }
 
     }
 
@@ -171,7 +254,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
             // GRID
             gridLattice g = new gridLattice(xDim, yDim, path_to_output_file);
-            boolean initial_recruitment = true;
             // Initialize variables to store counts for specific days
             double[] countsOnDay14 = new double[4];
             double[] countsOnDay28 = new double[4];
@@ -213,43 +295,43 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 // COUNT CURRENT POPULATION
                 double[] cell_count = g.CellCounts();
                 //This ensures that the initialization of inactive T cells only occurs at the start of the simulation (i.e., when timeStep is 0).
-                if (timeStep == 0) {
-                    int k = 0;
-                    while (k < g.InitinactiveTcells) {
-                        int xinit = g.rn.Int(xDim);
-                        int yinit = g.rn.Int(yDim);
-                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
-                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
-                        while (g.PopAt(xinit, yinit) > 0) {
-                            xinit = g.rn.Int(xDim);
-                            yinit = g.rn.Int(yDim);
-                        }
-                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-                        agentLattice c = g.NewAgentSQ(xinit, yinit);
-                        c.type = inactiveTcell;
-                        c.SetCellColor();
-                        k++;
-                    }
-                }
-
-                if (timeStep == 0) {
-                    int k = 0;
-                    while (k < g.InitactiveTcell) {
-                        int xinit = g.rn.Int(xDim);
-                        int yinit = g.rn.Int(yDim);
-                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
-                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
-                        while (g.PopAt(xinit, yinit) > 0) {
-                            xinit = g.rn.Int(xDim);
-                            yinit = g.rn.Int(yDim);
-                        }
-                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-                        agentLattice c = g.NewAgentSQ(xinit, yinit);
-                        c.type = activeTcell;
-                        c.SetCellColor();
-                        k++;
-                    }
-                }
+// IN VITRO               if (timeStep == 0) {
+//                    int k = 0;
+//                    while (k < g.InitinactiveTcells) {
+//                        int xinit = g.rn.Int(xDim);
+//                        int yinit = g.rn.Int(yDim);
+//                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
+//                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
+//                        while (g.PopAt(xinit, yinit) > 0) {
+//                            xinit = g.rn.Int(xDim);
+//                            yinit = g.rn.Int(yDim);
+//                        }
+//                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
+//                        agentLattice c = g.NewAgentSQ(xinit, yinit);
+//                        c.type = inactiveTcell;
+//                        c.SetCellColor();
+//                        k++;
+//                    }
+//                }
+//
+//  IN VITRO              if (timeStep == 0) {
+//                    int k = 0;
+//                    while (k < g.InitactiveTcell) {
+//                        int xinit = g.rn.Int(xDim);
+//                        int yinit = g.rn.Int(yDim);
+//                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
+//                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
+//                        while (g.PopAt(xinit, yinit) > 0) {
+//                            xinit = g.rn.Int(xDim);
+//                            yinit = g.rn.Int(yDim);
+//                        }
+//                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
+//                        agentLattice c = g.NewAgentSQ(xinit, yinit);
+//                        c.type = activeTcell;
+//                        c.SetCellColor();
+//                        k++;
+//                    }
+//                }
 
 
                 g.ModelStep(timeStep, day);
