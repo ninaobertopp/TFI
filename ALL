@@ -68,7 +68,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
     double[] TCE_start = {0}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
-    double[] TCE_Duration = {28}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    double[] TCE_Duration = {7}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -210,23 +210,32 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     }
     //Output numbers of cell populations
     public double[] CellCounts() {
-        double[] counts = new double[4];
+        double[] counts = new double[6];  // Increased array size to store all relevant cell types
+
         for (agentLattice c : this) {
             if (c.type == activeTcell) {
-                counts[0]++;
-            }
-            if (c.type == exhaustedTcells) {
-                counts[1]++;
-            }
-            if (c.type == Tumor) {
-                counts[2]++;
-            }
-            if (c.type == inactiveTcell) {
-                counts[3]++;
+                counts[0]++;  // Active T cells
+            } else if (c.type == exhaustedTcells) {
+                counts[1]++;  // Exhausted T cells
+            } else if (c.type == Tumor) {
+                counts[2]++;  // Regular Tumor cells
+            } else if (c.type == PD_L1_Tumor) {
+                counts[3]++;  // PD-L1 Tumor cells
+            } else if (c.type == inactiveTcell) {
+                counts[4]++;  // Inactive T cells
+            } else if (c.type == Tregs) {
+                counts[5]++;  // ✅ NEW: Treg cells
             }
         }
+
+        // ✅ Debug printout to verify correct counting
+        System.out.println("DEBUG: CellCounts -> Active T: " + counts[0] + ", Exhausted T: " + counts[1] +
+                ", Tumors: " + counts[2] + ", PD-L1 Tumors: " + counts[3] +
+                ", Inactive T: " + counts[4] + ", Tregs: " + counts[5]);
+
         return counts;
     }
+
 
     public void RecordOut(FileIO writeHere, int time, double[] cts) {
         writeHere.Write(time + ",");
@@ -235,21 +244,64 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     }
 
     public void ModelStep(double timeStep, double day) {
+        this.timeStep = (int) timeStep;
+
         ShuffleAgents(rn);
         for (agentLattice c : this) {
             c.CellStep();
         }
-        if (totalTumorCells + totalPDL1TumorCells > 0) {
-            currentPDL1Fraction = (double) totalPDL1TumorCells / (totalTumorCells + totalPDL1TumorCells);
-        } else {
-            currentPDL1Fraction = 0;
-        }
-        System.out.println("DEBUG: Total Tumor = " + totalTumorCells + ", PD-L1+ Tumor = " + totalPDL1TumorCells + ", Fraction = " + currentPDL1Fraction);
 
-        System.out.println("DEBUG: PD-L1 Fraction: " + currentPDL1Fraction);
+        // ✅ Recalculate tumor counts directly
+        totalTumorCells = 0;
+        totalPDL1TumorCells = 0;
+        for (agentLattice c : this) {
+            if (c.type == Tumor) {
+                totalTumorCells++;
+            } else if (c.type == PD_L1_Tumor) {
+                totalPDL1TumorCells++;
+            }
+        }
+
+        System.out.println("DEBUG: End of Step -> Tumors: " + totalTumorCells + ", PD-L1 Tumors: " + totalPDL1TumorCells);
+
+
+        if (TCE_ON && timeStep % 24 == 0 && timeStep != 0) {
+            System.out.println("DEBUG: Applying tumor conversion for Day " + (timeStep / 24));
+
+            int numConversions = (int) Math.floor(0.0137 * (totalTumorCells + totalPDL1TumorCells));  // 1.37% conversion
+
+            ArrayList<agentLattice> tumorCells = new ArrayList<>();
+            for (agentLattice c : this) {
+                if (c.type == Tumor) {
+                    tumorCells.add(c);
+                }
+            }
+
+            int conversionsDone = 0;
+            while (conversionsDone < numConversions && !tumorCells.isEmpty()) {
+                int index = rn.Int(tumorCells.size()); // Pick random tumor
+                agentLattice selected = tumorCells.get(index);
+                selected.type = PD_L1_Tumor;  // Convert to PD-L1+ Tumor
+                selected.SetCellColor();
+
+                // ✅ Directly update counts without a separate function
+                totalPDL1TumorCells++;
+                totalTumorCells--;
+
+                tumorCells.remove(index);
+                conversionsDone++;
+            }
+
+            System.out.println("DEBUG: Converted " + conversionsDone + " tumors to PD-L1.");
+            System.out.println("After Conversion: Total Tumors = " + totalTumorCells + ", PD-L1 Tumors = " + totalPDL1TumorCells);
+        }
+
     }
 
-    ////////
+
+
+
+        ////////
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
@@ -563,9 +615,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             target.Tcell_Kill();
                             this.tcellKills += 1;
                             if (G.TCE_ON) {
-                                this.pd_1 += 2;
+                                this.pd_1 += 1.4;
                             } else {
-                                this.pd_1 += 1;
+                                this.pd_1 += 0.7;
                             }
                             this.hours_since_kill = 0; // Reset kill timer
                             // If T cell kills a PD-L1 tumor, turn into exhausted T cell**
@@ -643,48 +695,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             // Default tumor death probability (without chemo)
             double adjusted_death_prob = G.Tumor_DEATH_PROB;
             double adjusted_prolif_prob = G.Tumor_PROLIFERATION_PROB;
-            System.out.println("TimeStep: " + G.timeStep);
-            System.out.println("Before TCE: Total Tumors = " + G.totalTumorCells + ", PD-L1 Tumors = " + G.totalPDL1TumorCells);
-            boolean convertedToday = false;
-            // Convert Tumors to PD-L1+ Tumors based on 1.37% daily increase
-            if (G.TCE_ON && G.timeStep % 24 == 0&& !convertedToday) {  // Ensures conversion happens ONCE per day
-                int totalTumors = G.totalTumorCells + G.totalPDL1TumorCells;  // Total tumor count
-                int numConversions = (int) Math.floor(0.0137 * totalTumors);  // 1.37% per day
-                System.out.println("Day " + (G.timeStep / 24) + " - Converting " + numConversions + " tumors to PD-L1+");
 
-
-                ArrayList<agentLattice> tumorCells = new ArrayList<>();
-
-                // Collect all Tumor cells
-                for (agentLattice c : G) {
-                    if (c.type == Tumor) {
-                        tumorCells.add(c);
-                    }
-                }
-
-                // Convert `numConversions` randomly chosen Tumors
-                for (int i = 0; i < numConversions && !tumorCells.isEmpty(); i++) {
-                    int index = G.rn.Int(tumorCells.size()); // Pick random index
-                    agentLattice selected = tumorCells.get(index);
-                    selected.type = PD_L1_Tumor;  // Convert to PD-L1+ Tumor
-                    selected.SetCellColor();
-                    G.totalPDL1TumorCells++;
-                    if (G.totalTumorCells > 0) {
-                        G.totalTumorCells--;
-                    }
-                    tumorCells.remove(index);  // Remove from list
-                }
-
-                System.out.println("After TCE: Total Tumors = " + G.totalTumorCells + ", PD-L1 Tumors = " + G.totalPDL1TumorCells);
-                System.out.println("DEBUG: TCE_ON = " + G.TCE_ON);
-                System.out.println("DEBUG: Current Total Tumor Cells = " + G.totalTumorCells);
-                System.out.println("DEBUG: Current Total PD-L1 Tumor Cells = " + G.totalPDL1TumorCells);
-                System.out.println("DEBUG: Fraction PD-L1+ = " + (double) G.totalPDL1TumorCells / (G.totalTumorCells + G.totalPDL1TumorCells));
-            }
-            // Reset flag at the start of a new day
-            if (G.timeStep % 24 != 0) {
-                convertedToday = false;
-            }
 
             if (G.chemo_on || this.G.chemo_effect_remaining > 0) {
                 // Ensure that after 48 hours, viability is 33%
