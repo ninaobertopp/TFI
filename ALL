@@ -50,7 +50,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
     public final static double STEPS = (28*24.0);
     public final static int ITERATIONS = 10; // number of times the model will run
-    public static boolean VISUALS = true; // turns on/off visualizations for the model
+    public static boolean VISUALS = false; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
     public final static int Tumor = 2; // tumor cell
@@ -68,7 +68,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
     double[] TCE_start = {0}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
-    double[] TCE_Duration = {7}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    double[] TCE_Duration = {28}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -86,7 +86,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         //Calls the constructor of the parent class (AgentGrid2D).
         super(xDim, yDim, agentLattice.class, true, true);
         output = new FileIO(outFileName, "w");
-        output.Write("Time,TCELLS, EXTCELLS, TUMOR, Inactive Tcells" + "\n");
+        output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %\n");
         double totalArea = xDim * yDim;
         // Initialize Tumor cells: 30% of the grid area
         int numTumorCells = (int)(totalArea * 0.3); // 30% of grid
@@ -210,31 +210,42 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     }
     //Output numbers of cell populations
     public double[] CellCounts() {
-        double[] counts = new double[6];  // Increased array size to store all relevant cell types
+        double[] counts = new double[9];  // Increased array size to store all relevant cell types
 
         for (agentLattice c : this) {
             if (c.type == activeTcell) {
-                counts[0]++;  // Active T cells
+                counts[2]++;  // Active T cells
             } else if (c.type == exhaustedTcells) {
-                counts[1]++;  // Exhausted T cells
-            } else if (c.type == Tumor) {
-                counts[2]++;  // Regular Tumor cells
-            } else if (c.type == PD_L1_Tumor) {
-                counts[3]++;  // PD-L1 Tumor cells
+                counts[3]++;  // Exhausted T cells
             } else if (c.type == inactiveTcell) {
                 counts[4]++;  // Inactive T cells
             } else if (c.type == Tregs) {
-                counts[5]++;  // ✅ NEW: Treg cells
+                counts[5]++;  // Treg cells
+            } else if (c.type == Tumor) {
+                counts[6]++;  // Tumor (separate)
+            } else if (c.type == PD_L1_Tumor) {
+                counts[7]++;  // PD-L1 Tumor (separate)
             }
         }
 
+        counts[1] = counts[6] + counts[7]; // ✅ Total Tumor (Tumor + PD-L1)
+        counts[0] = counts[2] + counts[3] + counts[4]; // ✅ CD8 TIL (Active + Exhausted + Inactive T-cells)
+
+        // ✅ Compute PD-L1 % (Avoid division by zero)
+        counts[8] = (counts[1] > 0) ? (counts[7] / counts[1]) * 100.0 : 0.0;
+
         // ✅ Debug printout to verify correct counting
-        System.out.println("DEBUG: CellCounts -> Active T: " + counts[0] + ", Exhausted T: " + counts[1] +
-                ", Tumors: " + counts[2] + ", PD-L1 Tumors: " + counts[3] +
-                ", Inactive T: " + counts[4] + ", Tregs: " + counts[5]);
+        System.out.println("DEBUG: CellCounts -> CD8 TIL: " + counts[0] + ", Total Tumor: " + counts[1] +
+                ", Active T: " + counts[2] + ", Exhausted T: " + counts[3] +
+                ", Inactive T: " + counts[4] + ", Tregs: " + counts[5] +
+                ", Tumors: " + counts[6] + ", PD-L1 Tumors: " + counts[7] +
+                ", PD-L1 %: " + counts[8]);
 
         return counts;
     }
+
+
+
 
 
     public void RecordOut(FileIO writeHere, int time, double[] cts) {
