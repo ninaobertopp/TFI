@@ -50,7 +50,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
     public final static double STEPS = (28*24.0);
     public final static int ITERATIONS = 10; // number of times the model will run
-    public static boolean VISUALS = false; // turns on/off visualizations for the model
+    public static boolean VISUALS = true; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
     public final static int Tumor = 2; // tumor cell
@@ -302,9 +302,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 tumorCells.remove(index);
                 conversionsDone++;
             }
-
-            System.out.println("DEBUG: Converted " + conversionsDone + " tumors to PD-L1.");
-            System.out.println("After Conversion: Total Tumors = " + totalTumorCells + ", PD-L1 Tumors = " + totalPDL1TumorCells);
         }
 
     }
@@ -571,32 +568,39 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             }
         }
         if (type == exhaustedTcells) {
+            double rn_BirthDeath = G.rn.Double();
+            double pdiv = G.T_CELL_DEATH_RATE;
+            double deathProb = ProbScale(pdiv, 1);  // Calculate probability
+
+            // Debugging print
+            //System.out.println("DEBUG: T cell death probability at timeStep " + G.timeStep + " = " + deathProb);
+
+            if (rn_BirthDeath < deathProb) {  // Check if cell should die
+                //System.out.println("DEBUG: Exhausted T cell dies at timeStep " + G.timeStep);
+                this.Dispose();
+                return;
+            }
+
             this.SetCellColor();
             int[] movdivHood = MooreHood(true); // for division and movement
             int emptyNeighbors = MapEmptyHood(movdivHood); // mapping empty spots
-            double rn_BirthDeath = G.rn.Double();
-            double pdiv = G.T_CELL_DEATH_RATE;
-            if (rn_BirthDeath < ProbScale(pdiv, 1 / 24)) { // scaling probability that an even that occurs once every 24 hours will occur any given hour
-                this.Dispose();
+            if (emptyNeighbors > 0) {
+                int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
+                int chosenCell = movdivHood[chosenIndex]; // Get the chosen empty cell
+                if (G.GetAgent(chosenCell) == null) { // Check if the chosen cell is still empty
+                    MoveSQ(chosenCell);
+                }
             }
             //Define the percentage of cells to turn into active T cells
             double activationProbability = 0.0005; // For example, 30% chance
             if (G.TCE_ON) {
                 // Generate a random number between 0 and 1
                 double randomNumber = Math.random();
-
                 // Only turn into activeTcell if the random number is less than the activationProbability
                 if (randomNumber < activationProbability) {
                     this.type = activeTcell;
                     this.SetCellColor(); // Update cell color after type change
                     this.pd_1 = 0;
-                }
-            }
-            if (emptyNeighbors > 0) {
-                int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
-                int chosenCell = movdivHood[chosenIndex]; // Get the chosen empty cell
-                if (G.GetAgent(chosenCell) == null) { // Check if the chosen cell is still empty
-                    MoveSQ(chosenCell);
                 }
             }
         }
@@ -626,9 +630,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             target.Tcell_Kill();
                             this.tcellKills += 1;
                             if (G.TCE_ON) {
-                                this.pd_1 += 1.4;
+                                this.pd_1 += 1.0;
                             } else {
-                                this.pd_1 += 0.7;
+                                this.pd_1 += 0.5;
                             }
                             this.hours_since_kill = 0; // Reset kill timer
                             // If T cell kills a PD-L1 tumor, turn into exhausted T cell**
@@ -724,9 +728,13 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 Dispose();
                 return;
             }
+            // 🔹 **DEBUG: Check Tumor Proliferation Probability**
+            double tumorProlifProb = ProbScale(adjusted_prolif_prob, 1);
+            //System.out.println("DEBUG: Tumor proliferation probability at timeStep " + G.timeStep + " = " + tumorProlifProb);
 
             //STEP 2: division
             if (G.rn.Double() < ProbScale(adjusted_prolif_prob, 1)) {
+                //System.out.println("DEBUG: Tumor cell proliferates at timeStep " + G.timeStep);
                 int[] divHood = MooreHood(true);
                 int emptyNeighbors = MapEmptyHood(divHood);
                 //Create new Agent
