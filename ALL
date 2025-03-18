@@ -67,8 +67,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {0}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
-    double[] TCE_Duration = {28}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    double[] TCE_start = {0, 6, 12, 18, 24}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
+    double[] TCE_Duration = {3, 3, 3, 3, 3}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -114,12 +114,12 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         }
         // Initialize T cells: 2.5% of the grid area
         int numTCells = (int)(totalArea * 0.025); // 2.5% of grid area
-        int numInactiveTCells = (int)(numTCells * 0.80);
-        int numActiveTCells = (int)(numTCells * 0.10);
-        int numExhaustedTCells = (int)(numTCells * 0.10);
+        int numInactiveTCells = (int)(numTCells * 0.673);
+        int numActiveTCells = (int)(numTCells * 0.115);
+        int numExhaustedTCells = (int)(numTCells * 0.212);
         int numTregs = (int)(numTCells * 0.096);
 
-        // Place inactive T cells (50% of total T cells)
+        // Place inactive T cells
         for (int i = 0; i < numInactiveTCells; i++) {
             int xinit, yinit;
             do {
@@ -235,11 +235,11 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         counts[8] = (counts[1] > 0) ? (counts[7] / counts[1]) * 100.0 : 0.0;
 
         // ✅ Debug printout to verify correct counting
-        System.out.println("DEBUG: CellCounts -> CD8 TIL: " + counts[0] + ", Total Tumor: " + counts[1] +
-                ", Active T: " + counts[2] + ", Exhausted T: " + counts[3] +
-                ", Inactive T: " + counts[4] + ", Tregs: " + counts[5] +
-                ", Tumors: " + counts[6] + ", PD-L1 Tumors: " + counts[7] +
-                ", PD-L1 %: " + counts[8]);
+//        System.out.println("DEBUG: CellCounts -> CD8 TIL: " + counts[0] + ", Total Tumor: " + counts[1] +
+//                ", Active T: " + counts[2] + ", Exhausted T: " + counts[3] +
+//                ", Inactive T: " + counts[4] + ", Tregs: " + counts[5] +
+//                ", Tumors: " + counts[6] + ", PD-L1 Tumors: " + counts[7] +
+//                ", PD-L1 %: " + counts[8]);
 
         return counts;
     }
@@ -273,11 +273,10 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             }
         }
 
-        System.out.println("DEBUG: End of Step -> Tumors: " + totalTumorCells + ", PD-L1 Tumors: " + totalPDL1TumorCells);
 
 
         if (TCE_ON && timeStep % 24 == 0 && timeStep != 0) {
-            System.out.println("DEBUG: Applying tumor conversion for Day " + (timeStep / 24));
+            //System.out.println("DEBUG: Applying tumor conversion for Day " + (timeStep / 24));
 
             int numConversions = (int) Math.floor(0.0137 * (totalTumorCells + totalPDL1TumorCells));  // 1.37% conversion
 
