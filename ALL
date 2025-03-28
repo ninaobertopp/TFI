@@ -626,19 +626,24 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                         agentLattice target = G.GetAgent(movdivHood[j]); // Store reference
 
                         if (target != null && (target.type == Tumor || target.type == PD_L1_Tumor) && this.hours_since_kill >= 1) {
-                            target.Tcell_Kill();
-                            this.tcellKills += 1;
-                            if (G.TCE_ON) {
-                                this.pd_1 += 1.0;
-                            } else {
-                                this.pd_1 += 0.5;
-                            }
-                            this.hours_since_kill = 0; // Reset kill timer
-                            // If T cell kills a PD-L1 tumor, turn into exhausted T cell**
+                            double killProb;
                             if (target.type == PD_L1_Tumor) {
-                                this.type = exhaustedTcells;
-                                this.SetCellColor(); // Update the color
+                                // PD-L1⁺ tumors have a reduced kill probability inversely related to PD-1
+                                killProb = 1.0 / (1.0 + this.pd_1); // More PD-1 = lower kill chance
+                            } else {
+                                killProb = 1.0; // Always kill regular tumors
                             }
+                            if (G.rn.Double() < killProb) {
+                                target.Tcell_Kill();
+                                this.tcellKills += 1; //not using/needing this
+                                if (G.TCE_ON) {
+                                    this.pd_1 += 1.0;
+                                } else {
+                                    this.pd_1 += 0.5;
+                                }
+                                this.hours_since_kill = 0; // Reset kill timer
+                            }
+
                             // Division logic
                             double divisionProb = 0.8; // Example division probability
                             // Prevent proliferation if chemo is on or its effect is still active (48h after onset)
@@ -657,10 +662,6 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                                             child.pd_1 = this.pd_1;
                                             child.hours_since_division = 0;
                                             this.hours_since_division = 0;
-//                                            if (G.TCE_ON) {
-//                                                this.type = activeTcell;
-//                                                this.SetCellColor(); // Update cell color after type change
-//                                            }
                                             break;
                                         }
                                     }
