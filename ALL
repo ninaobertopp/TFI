@@ -48,7 +48,7 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (28*24.0);
+    public final static double STEPS = (84*24.0);
     public final static int ITERATIONS = 10; // number of times the model will run
     public static boolean VISUALS = true; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
@@ -67,8 +67,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {0, 6, 12, 18, 24}; //{-1, 13}; {-1, 5, 11, 17, 23}; {0, 6, 12, 18, 24}
-    double[] TCE_Duration = {3, 3, 3, 3, 3}; //{8, 8}; {4, 4, 4, 4, 4}; {3, 3, 3, 3, 3}
+    double[] TCE_start = {0, 42}; //{0, 6, 12, 18, 24}
+    double[] TCE_Duration = {28, 28}; //{3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -89,7 +89,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %\n");
         double totalArea = xDim * yDim;
         // Initialize Tumor cells: 30% of the grid area
-        int numTumorCells = (int)(totalArea * 0.3); // 30% of grid
+        int numTumorCells = (int)(totalArea * 0.30);
         int initialPDL1Cells = (int) (numTumorCells * 0.02); // 2% start as PD-L1+ Tumor
 
 
@@ -657,10 +657,10 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                                             child.pd_1 = this.pd_1;
                                             child.hours_since_division = 0;
                                             this.hours_since_division = 0;
-                                            if (G.TCE_ON) {
-                                                this.type = activeTcell;
-                                                this.SetCellColor(); // Update cell color after type change
-                                            }
+//                                            if (G.TCE_ON) {
+//                                                this.type = activeTcell;
+//                                                this.SetCellColor(); // Update cell color after type change
+//                                            }
                                             break;
                                         }
                                     }
@@ -685,6 +685,12 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             int[] movdivHood = MooreHood(true);
             int emptyNeighbors = MapEmptyHood(movdivHood);
 
+            // Move Tregs randomly
+            if (emptyNeighbors > 0) {
+                int chosenIndex = G.rn.Int(emptyNeighbors);
+                MoveSQ(movdivHood[chosenIndex]);
+            }
+
             // Suppression of active T cells
             int[] hood = MooreHood(false);
             int options = MapOccupiedHood(hood);
@@ -696,12 +702,6 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                         neighbor.SetCellColor();
                     }
                 }
-            }
-
-            // Move Tregs randomly
-            if (emptyNeighbors > 0) {
-                int chosenIndex = G.rn.Int(emptyNeighbors);
-                MoveSQ(movdivHood[chosenIndex]);
             }
         }
 
