@@ -11,37 +11,6 @@ import java.util.ArrayList;
 import static TCE_TFI.gridLattice.*;
 import static HAL.Util.*;
 
-//////////////
-////LOG//////
-/////////////
-//02/25/2025 Added Chemo-Therapy
-
-//////////////
-////TO-DO////
-/////////////
-//Turn in vitro to in vivo:
-
-//Start with higher number tumor cells
-//What is the ratio of Leukemic Blast Cells to T cells in in bone marrow of ALL patient?
-//  Blast cells in the bone marrow are typically between 25 and 95% in patients with ALL.
-//      Source: Emadi, A., & York Law, J. (2023). Acute lymphoblastic leukemia (ALL). In Merck Manual (Professional Edition). Merck & Co. https://www.merckmanuals.com/professional/hematology-and-oncology/leukemias/acute-lymphoblastic-leukemia-all
-//  31%
-//      Mahmood, Khalid, Muhammad Ubaid, and Syeda Taliya Rizvi. "Multiple Osteolytic Lesions Causing Hypercalcemia: A Rare Presentation of Acute Lymphoblastic Leukemia." Case Reports in Medicine, vol. 2017, 2017, Article 2347810. Wiley Online Library, https://doi.org/10.1155/2017/2347810.
-//
-// Start with a mix of bystander TIL (inactive T cells); active Tcells and exhausted T cells
-// Physiological BM it's 2.5% CD8 --> find out in ALL BM
-//
-// Active T cells different amount of PD-1
-//
-// Blood vessels
-//
-// Recruitment of T cells from blood vessels
-//
-// TCE responds according to in vivo paper
-//
-// Add Tregs
-// 9.6% of CD4 in ALL-BM are Tregs, ; what's the CD4/CD8 ratio? --> 1:1 in physiological setting
-
 
 //////////////
 //GRID CLASS//
@@ -59,16 +28,18 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public final static int Tregs = 5;
     public int totalTumorCells = 0;     // Tracks all tumor cells
     public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
+    public int tumorKillsToday = 0;
+
     public double currentPDL1Fraction = 0;
     public final int InitactiveTcell =1; //IN VITRO initial number of active tcells
     public final int InitinactiveTcells = 20; //IN VITRO initial number of inactive tcells
     public final int InitexhaustedTcells = 0; // initial number of exhausted tcells
-    final static double Tumor_PROLIFERATION_PROB = 1.0 / 24; //cancer cell division rate
+    final static double Tumor_PROLIFERATION_PROB = 0.5 / 24; //cancer cell division rate
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {0, 42}; //{0, 6, 12, 18, 24}
-    double[] TCE_Duration = {28, 28}; //{3, 3, 3, 3, 3}
+    double[] TCE_start = {0, 14, 42, 56}; //{0, 6, 12, 18, 24}
+    double[] TCE_Duration = {7,7, 7, 7}; //{3, 3, 3, 3, 3}
     public static boolean chemo_on = true;// Chemotherapy switch
     public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
     public static double chemo_duration = 0; // Each cycle lasts 1 day
@@ -278,7 +249,9 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         if (TCE_ON && timeStep % 24 == 0 && timeStep != 0) {
             //System.out.println("DEBUG: Applying tumor conversion for Day " + (timeStep / 24));
 
-            int numConversions = (int) Math.floor(0.0137 * (totalTumorCells + totalPDL1TumorCells));  // 1.37% conversion
+            //int numConversions = (int) Math.floor(0.0137 * (totalTumorCells + totalPDL1TumorCells));  // 1.37% conversion
+            int numConversions = (int) Math.floor(0.00001 * tumorKillsToday); // e.g., 50% of killed tumors cause PD-L1 conversion
+
 
             ArrayList<agentLattice> tumorCells = new ArrayList<>();
             for (agentLattice c : this) {
@@ -302,13 +275,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 conversionsDone++;
             }
         }
-
+        tumorKillsToday = 0;
     }
 
 
 
 
-        ////////
+    ////////
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
@@ -394,45 +367,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 }
                 // COUNT CURRENT POPULATION
                 double[] cell_count = g.CellCounts();
-                //This ensures that the initialization of inactive T cells only occurs at the start of the simulation (i.e., when timeStep is 0).
-// IN VITRO               if (timeStep == 0) {
-//                    int k = 0;
-//                    while (k < g.InitinactiveTcells) {
-//                        int xinit = g.rn.Int(xDim);
-//                        int yinit = g.rn.Int(yDim);
-//                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
-//                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
-//                        while (g.PopAt(xinit, yinit) > 0) {
-//                            xinit = g.rn.Int(xDim);
-//                            yinit = g.rn.Int(yDim);
-//                        }
-//                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-//                        agentLattice c = g.NewAgentSQ(xinit, yinit);
-//                        c.type = inactiveTcell;
-//                        c.SetCellColor();
-//                        k++;
-//                    }
-//                }
-//
-//  IN VITRO              if (timeStep == 0) {
-//                    int k = 0;
-//                    while (k < g.InitactiveTcell) {
-//                        int xinit = g.rn.Int(xDim);
-//                        int yinit = g.rn.Int(yDim);
-//                        //g.PopAt(xinit, yinit) checks the population at the given coordinates.
-//                        // If the position is occupied (i.e., population is greater than 0), new coordinates are generated.
-//                        while (g.PopAt(xinit, yinit) > 0) {
-//                            xinit = g.rn.Int(xDim);
-//                            yinit = g.rn.Int(yDim);
-//                        }
-//                        // Once xinit and yinit are within (0,0) and (xDim,yDim), place agent.
-//                        agentLattice c = g.NewAgentSQ(xinit, yinit);
-//                        c.type = activeTcell;
-//                        c.SetCellColor();
-//                        k++;
-//                    }
-//                }
-
 
                 g.ModelStep(timeStep, day);
                 // GRAPHICAL OUTPUT
@@ -535,6 +469,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 G.totalPDL1TumorCells--;
             }
         }
+        G.tumorKillsToday++;
         this.Dispose();
     }
 
@@ -615,36 +550,48 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 int options = MapOccupiedHood(movdivHood); // Mapping occupied spots
                 int emptyNeighbors = MapEmptyHood(movdivHood); // Mapping empty spots
 
-                double treshold = 5;//+Math.random();
+                double treshold = 5.0;//+Math.random();
                 if (this.pd_1 > treshold) {
                     this.type = exhaustedTcells;
                     this.SetCellColor();
                     break;
                 } else {
                     // Killing logic
+                    boolean hasKilled = false;
                     for (int j = 0; j < options; j++) {
                         agentLattice target = G.GetAgent(movdivHood[j]); // Store reference
 
                         if (target != null && (target.type == Tumor || target.type == PD_L1_Tumor) && this.hours_since_kill >= 1) {
-                            double killProb;
-                            if (target.type == PD_L1_Tumor) {
-                                // PD-L1⁺ tumors have a reduced kill probability inversely related to PD-1
-                                killProb = 1.0 / (1.0 + this.pd_1); // More PD-1 = lower kill chance
-                            } else {
-                                killProb = 1.0; // Always kill regular tumors
+                            boolean canKill = false;
+                            if (target.type == Tumor) {
+                                canKill = true;
+                            } else if (target.type == PD_L1_Tumor) {
+                                //PD-1 exhaustion via antigen engagement (not necessarily killing)
+                                this.pd_1 += 0.5;
+                                // sigmoid transition:
+                                //pd_1 = 0 → ~5% suppression
+                                //pd_1 = 2 → ~27%
+                                //pd_1 = 3 → 50%
+                                //pd_1 = 4 → ~73%
+                                //pd_1 = 5 → ~88%
+                                double suppressionProb = 1.0 / (1.0 + Math.exp(-2.0 * (this.pd_1 - 3.0)));
+                                if (G.rn.Double() > suppressionProb) {
+                                    canKill = true;
+                                }
                             }
-                            if (G.rn.Double() < killProb) {
+
+                            if (canKill) {
                                 target.Tcell_Kill();
-                                this.tcellKills += 1; //not using/needing this
+                                this.tcellKills += 1;
+                                this.hours_since_kill = 0;
+
                                 if (G.TCE_ON) {
                                     this.pd_1 += 1.0;
                                 } else {
                                     this.pd_1 += 0.5;
                                 }
-                                this.hours_since_kill = 0; // Reset kill timer
                             }
-
-                            // Division logic
+                                // Division logic
                             double divisionProb = 0.8; // Example division probability
                             // Prevent proliferation if chemo is on or its effect is still active (48h after onset)
                             if (this.G.chemo_effect_remaining == 0 && G.rn.Double() < divisionProb){
@@ -667,11 +614,12 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                                     }
                                 }
                             }
+                            hasKilled = true;
                             break; // Exit the inner loop if a tumor cell is encountered
                         }
                     }
 
-                    if (emptyNeighbors > 0) {
+                    if (!hasKilled && emptyNeighbors > 0) {
                         int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
                         int chosenCell = movdivHood[chosenIndex]; // Get the chosen empty cell
                         if (G.GetAgent(chosenCell) == null) { // Check if the chosen cell is still empty
@@ -785,4 +733,3 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
 
     }
 }
-
