@@ -17,7 +17,7 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (42*24.0);
+    public final static double STEPS = (24*24.0);
     public final static int ITERATIONS = 10; // number of times the model will run
     public static boolean VISUALS = true; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
@@ -38,11 +38,11 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON = false; // switching on tce therapy
-    double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {1}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {24}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
     public static boolean chemo_on = false;// Chemotherapy switch
-    public static double[] chemo_start_times = {}; // Multiple chemo starts (e.g., day 1, 10, and 20)
-    public static double chemo_duration = 0; // Each cycle lasts 1 day
+    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
+    public static double chemo_duration = 1; // Each cycle lasts 1 day
     public static int chemo_effect_remaining = 0; // Tracks post-chemo effect
 
 
@@ -57,7 +57,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         //Calls the constructor of the parent class (AgentGrid2D).
         super(xDim, yDim, agentLattice.class, true, true);
         output = new FileIO(outFileName, "w");
-        output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %\n");
+        output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %,TCE_ON,Chemo_ON\n");
         double totalArea = xDim * yDim;
         // Initialize Tumor cells: 30% of the grid area
         int numTumorCells = (int)(totalArea * 0.30);
@@ -222,7 +222,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public void RecordOut(FileIO writeHere, int time, double[] cts) {
         writeHere.Write(time + ",");
         writeHere.WriteDelimit(cts, ",");
-        writeHere.Write ("\n");
+        writeHere.Write((TCE_ON ? "1" : "0") + "," + (chemo_on ? "1" : "0") + "\n");
     }
 
     public void ModelStep(double timeStep, double day) {
@@ -323,6 +323,11 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             UIWindow win = new UIWindow("TCE_TFI");
             win.AddCol(0, new UILabel("Cells"));
             win.AddCol(0, Cell_vis);
+            UILabel dayLabel = new UILabel("Day: 0");
+            UILabel chemoLabel = new UILabel("Chemo: OFF");
+
+            win.AddCol(1, dayLabel);
+            win.AddCol(1, chemoLabel);
             win.RunGui();
             GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
             // GRID
@@ -383,6 +388,10 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 if (i % 24.0 == 0) {
                     System.out.println("Day " + day);
                     g.RecordOut(g.output, (int) day, cell_count);
+
+                    dayLabel.SetText("Day: " + (int) day);
+                    chemoLabel.SetText("Chemo: " + (g.chemo_on ? "ON" : "OFF"));
+
                     day+= 1;
 
                     //System.out.println("TCE_start.length: " + g.TCE_start.length);
@@ -584,10 +593,12 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                                 this.pd_1 += 0.5;
                             }
                         }
-                        // Division logic
-                        double divisionProb = 0.8; // Example division probability
-                        // Prevent proliferation if chemo is on or its effect is still active (48h after onset)
-                        if (this.G.chemo_effect_remaining == 0 && G.rn.Double() < divisionProb) {
+                        if (this.G.chemo_effect_remaining > 0) {
+                            // If chemo effect is ON → kill the T cell instead of dividing
+                            this.Dispose();
+                            return;
+                        } else {
+                            // If no chemo effect → normal division
                             if (emptyNeighbors > 0) {
                                 for (int i = 0; i < emptyNeighbors; i++) {
                                     int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
