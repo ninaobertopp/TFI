@@ -22,16 +22,16 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public final static int Tumor = 2; // tumor cell
     public final static int PD_L1_Tumor = 3; // New PD-L1+ Tumor cell type
     public final static int inactiveTcell = 6; // inactive tcells
-    public final static int Tregs = 5;
+    //public final static int Tregs = 5;
     public int totalTumorCells = 0;     // Tracks all tumor cells
     public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
     public int tumorKillsToday = 0;
-    final static double Tumor_PROLIFERATION_PROB = 1.0 / 24; //cancer cell division rate
+    final static double Tumor_PROLIFERATION_PROB = 1.0 / 6; //cancer cell division rate; SENSITIVITY ANALYSIS
     final static double Tumor_DEATH_PROB = 1.0 / 72; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 24; // tcell death rate - used for exhausted tcells
     boolean TCE_ON; // switching on tce therapy
-    double[] TCE_start = {0, 6, 12, 18, 24}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {3, 3, 3, 3, 3}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
 //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
@@ -72,11 +72,11 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             c.SetCellColor();
         }
         // Initialize T cells: 2.5% of the grid area
-        int numTCells = (int)(totalArea * 0.025); // 2.5% of grid area
-        int numInactiveTCells = (int)(numTCells * 0.673);
-        int numActiveTCells = (int)(numTCells * 0.115);
-        int numExhaustedTCells = (int)(numTCells * 0.212);
-        int numTregs = (int)(numTCells * 0.096);
+        int numTCells = (int)(totalArea * 0.05); // according to
+        int numInactiveTCells = (int)(numTCells * 0.77);
+        int numActiveTCells = (int)(numTCells * 0.18);
+        int numExhaustedTCells = (int)(numTCells * 0.05);
+        //int numTregs = (int)(numTCells * 0.096);
 
         // Place inactive T cells
         for (int i = 0; i < numInactiveTCells; i++) {
@@ -89,7 +89,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             c.type = inactiveTcell;
             c.SetCellColor();
         }
-// Place active T cells (30% of total T cells)
+// Place active T cells
         for (int i = 0; i < numActiveTCells; i++) {
             int xinit, yinit;
             do {
@@ -103,7 +103,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             c.pd_1 = rn.Double() * 5;  // Random number between 0 and 5
         }
 
-// Place exhausted T cells (20% of total T cells)
+// Place exhausted T cells
         for (int i = 0; i < numExhaustedTCells; i++) {
             int xinit, yinit;
             do {
@@ -205,7 +205,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         }
 
         if (TCE_ON && timeStep % 24 == 0 && timeStep != 0) {
-            int numConversions = (int) Math.floor(0.0 * tumorKillsToday); // e.g., 50% of killed tumors cause PD-L1 conversion
+            int numConversions = (int) Math.floor(0.3 * tumorKillsToday); // e.g., 50% of killed tumors cause PD-L1 conversion; SENSITIVITY ANALYSIS
 
             ArrayList<agentLattice> tumorCells = new ArrayList<>();
             for (agentLattice c : this) {
@@ -229,6 +229,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 conversionsDone++;
             }
         }
+        double[] cellCounts = CellCounts();
         tumorKillsToday = 0;
     }
     ////////
@@ -483,9 +484,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                 for (int j = 0; j < options; j++) {
                     agentLattice target = G.GetAgent(movdivHood[j]); // Store reference
 
-                    if (target != null && (target.type == Tumor || target.type == PD_L1_Tumor) && this.hours_since_kill >= 1) {
+                    if (target != null && (target.type == Tumor || target.type == PD_L1_Tumor) && this.hours_since_kill >= 12) { //hours since kill SENSITIVITY ANALYSIS
                         boolean canKill = false;
-                        if (target.type == Tumor) {
+                        if (target.type == Tumor && G.rn.Double() < 0.05) {  // 5% chance to kill SENSITIVITY ANLYSIS!
                             canKill = true;
                         } else if (target.type == PD_L1_Tumor) {
                             //PD-1 exhaustion via antigen engagement (not necessarily killing)
@@ -520,21 +521,24 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
 //                        } else {
                             {
                             // If no chemo effect → normal division
-                            if (emptyNeighbors > 0) {
-                                for (int i = 0; i < emptyNeighbors; i++) {
-                                    int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
-                                    int chosenCell = movdivHood[chosenIndex];
+                            if (emptyNeighbors > 0 && this.hours_since_division >= 9) {//SENSITIVITY ANALYSIS range 5-28h ("Heritable changes in division speed accompany the diversification of single T cell fate")
+                                double divProbScale = Math.max(0.0, 1.0 - ((double)this.G.CellCounts()[0] / (this.G.xDim * this.G.yDim)));
+                                if (G.rn.Double() < divProbScale) {
+                                    for (int i = 0; i < emptyNeighbors; i++) {
+                                        int chosenIndex = G.rn.Int(emptyNeighbors); // Randomly choose an empty cell index
+                                        int chosenCell = movdivHood[chosenIndex];
 //                                    Get the chosen empty cell
-                                    if (G.GetAgent(chosenCell) == null) {
-                                        // Check if the chosen cell is still empty
-                                        agentLattice child = G.NewAgentSQ(chosenCell);
-                                        child.type = activeTcell;
-                                        child.SetCellColor();
-                                        child.tcellAge = 0;
-                                        child.pd_1 = this.pd_1;
-                                        child.hours_since_division = 0;
-                                        this.hours_since_division = 0;
-                                        break;
+                                        if (G.GetAgent(chosenCell) == null) {
+                                            // Check if the chosen cell is still empty
+                                            agentLattice child = G.NewAgentSQ(chosenCell);
+                                            child.type = activeTcell;
+                                            child.SetCellColor();
+                                            child.tcellAge = 0;
+                                            child.pd_1 = this.pd_1;
+                                            child.hours_since_division = 0;
+                                            this.hours_since_division = 0;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -551,7 +555,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                         MoveSQ(chosenCell);
                     }
                 }
-                double treshold = 5.0;//+Math.random();
+                double treshold = 3.0;//+Math.random();
                 if (this.pd_1 > treshold) {
                     this.type = exhaustedTcells;
                     this.SetCellColor();
