@@ -32,8 +32,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     final static double Tumor_DEATH_PROB = 1.0 / 132.0; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 48.0; // tcell death rate - used for exhausted tcells
     boolean TCE_ON; // switching on tce therapy
-    double[] TCE_start = {0, 14}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {7, 7}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
 //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
