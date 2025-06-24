@@ -514,9 +514,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             this.hours_since_kill = 0;
 
                             if (G.TCE_ON) {
-                                this.pd_1 += 0.5;
+                                this.pd_1 += 0.4;
                             } else {
-                                this.pd_1 += 0.25;
+                                this.pd_1 += 0.20;
                             }
 //                        if (this.G.chemo_effect_remaining > 0) {
 //                            // If chemo effect is ON → kill the T cell instead of dividing
