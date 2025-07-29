@@ -28,13 +28,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public int totalTumorCells = 0;     // Tracks all tumor cells
     //public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
     public int tumorKillsToday = 0;
-    final static double Tumor_PROLIFERATION_PROB = 1.0/24; //cancer cell division rate; SENSITIVITY ANALYSIS
+    final static double Tumor_PROLIFERATION_PROB = 1.0/24.0; //cancer cell division rate; SENSITIVITY ANALYSIS
     final static double Tumor_DEATH_PROB = 1.0 / 132.0; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 48.0; // tcell death rate - used for exhausted tcells
     boolean TCE_ON; // switching on tce therapy
     double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
     double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
-//    boolean chemo_on = false;// Chemotherapy switch
+    //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
 //    public static int chemo_effect_remaining = 0; // Tracks post-chemo effect
@@ -195,7 +195,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
         for (agentLattice c : this) {
             c.CellStep();
         }
-        System.out.println("Day " + day + ": Tumor kills today = " + tumorKillsToday);
 
 // ✅ Recalculate tumor counts directly
         totalTumorCells = 0;
@@ -259,21 +258,24 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             String setting_dir = projPath + VASC_ARCH_PATH + save + "/output/" + "/" + date_time + "/";
             // CREATE OUTPUT DIR
             new File(setting_dir).mkdirs();
-            String outputFilename = simLabel + "_" + date_time + ".csv";
+            String outputFilename = simLabel + "_" + date_time + "_rep" + run + ".csv";
             String path_to_output_file = setting_dir + outputFilename;
 
-            // OUTPUT WINDOW
-            UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
-            UIWindow win = new UIWindow("TCE_TFI");
-            win.AddCol(0, new UILabel("Cells"));
-            win.AddCol(0, Cell_vis);
-            UILabel dayLabel = new UILabel("Day: 0");
-            UILabel chemoLabel = new UILabel("Chemo: OFF");
 
-            win.AddCol(1, dayLabel);
-            win.AddCol(1, chemoLabel);
-            win.RunGui();
-            GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
+              // OUTPUT WINDOW
+              UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
+              UIWindow win = new UIWindow("TCE_TFI");
+              win.AddCol(0, new UILabel("Cells"));
+              win.AddCol(0, Cell_vis);
+              UILabel dayLabel = new UILabel("Day: 0");
+              UILabel chemoLabel = new UILabel("Chemo: OFF");
+
+              win.AddCol(1, dayLabel);
+              win.AddCol(1, chemoLabel);
+            if (VISUALS) {
+                win.RunGui();
+            }
+              GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
             // GRID
             Rand runRNG = new Rand(run);
             gridLattice g = new gridLattice(xDim, yDim, path_to_output_file, runRNG);
@@ -284,7 +286,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 for (int k = 0; k < g.TCE_start.length; k++) {
                     if (day >= g.TCE_start[k] && day <= g.TCE_start[k] + g.TCE_Duration[k] - 1) {
                         g.TCE_ON = true;
-                        //System.out.println("TCE_ON set to true at day: " + day + ", timeStep: " + timeStep + ", duration index: " + k);
                     }
                 }
 
@@ -303,9 +304,6 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 if (i % 24.0 == 0) {
                     System.out.println("Day " + day);
                     g.RecordOut(g.output, (int) day, cell_count, g.TCE_ON);
-//                    g.RecordOut(g.output, (int) day, cell_count, g.TCE_ON, g.chemo_on);
-//                    dayLabel.SetText("Day: " + (int) day);
-//                    chemoLabel.SetText("Chemo: " + (g.chemo_on ? "ON" : "OFF"));
 
                     day += 1;
 
@@ -319,8 +317,10 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 }
             }
             g.output.Close();
-            win.Close();
-            gm_Cell_vis.Close();
+            if (VISUALS) {
+                win.Close();
+                gm_Cell_vis.Close();
+            }
         }
     }
 }
@@ -407,12 +407,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             double rn_BirthDeath = G.rn.Double();
             double deathRate = G.T_CELL_DEATH_RATE;
             double deathProb = ProbScale(deathRate, 1);  // Calculate probability
-
-            // Debugging print
-            //System.out.println("DEBUG: T cell death probability at timeStep " + G.timeStep + " = " + deathProb);
+            
 
             if (rn_BirthDeath < deathProb) {  // Check if cell should die
-                //System.out.println("DEBUG: Exhausted T cell dies at timeStep " + G.timeStep);
                 this.Dispose();
                 return;
             }
@@ -460,7 +457,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                         boolean canKill = false;
 
                         // 5% chance to kill tumor cells
-                        if (G.rn.Double() < 0.05) {
+                        if (G.rn.Double() < 0.03) {
                             canKill = true;
                         }
 
@@ -470,12 +467,12 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
                             this.hours_since_kill = 0;
 
                             if (G.TCE_ON) {
-                                this.pd_1 += 0.5;
+                                this.pd_1 += 1.0;
                             } else {
-                                this.pd_1 += 0.25;
+                                this.pd_1 += 0.5;
                             }
                             if (emptyNeighbors > 0 && this.hours_since_division >= 5) {//SENSITIVITY ANALYSIS range 5-28h (paper: "Heritable changes in division speed accompany the diversification of single T cell fate")
-                                double divProbScale = 0.52 * (Math.max(0.0, 1.0 - (this.G.cached_CD8_TIL_count / (this.G.xDim * this.G.yDim))));
+                                double divProbScale = 0.35 * (Math.max(0.0, 1.0 - (this.G.cached_CD8_TIL_count / (this.G.xDim * this.G.yDim))));
 
                                 if (G.rn.Double() < divProbScale) {
                                     for (int i = 0; i < emptyNeighbors; i++) {
@@ -536,7 +533,6 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             }
             //STEP 2: division
             if (G.rn.Double() < ProbScale(adjusted_prolif_prob, 1)) {
-                //System.out.println("DEBUG: Tumor cell proliferates at timeStep " + G.timeStep);
                 int[] divHood = MooreHood(true);
                 int emptyNeighbors = MapEmptyHood(divHood);
                 //Create new Agent
