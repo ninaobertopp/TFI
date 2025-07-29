@@ -15,7 +15,7 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (42*24.0);
+    public final static double STEPS = (28*24.0);
     public static boolean VISUALS = false; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
@@ -26,14 +26,14 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public final static int inactiveTcell = 6; // inactive tcells
     //public final static int Tregs = 5;
     public int totalTumorCells = 0;     // Tracks all tumor cells
-    public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
+    //public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
     public int tumorKillsToday = 0;
-    final static double Tumor_PROLIFERATION_PROB = 0; //cancer cell division rate; SENSITIVITY ANALYSIS
+    final static double Tumor_PROLIFERATION_PROB = 1.0/24; //cancer cell division rate; SENSITIVITY ANALYSIS
     final static double Tumor_DEATH_PROB = 1.0 / 132.0; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 48.0; // tcell death rate - used for exhausted tcells
     boolean TCE_ON; // switching on tce therapy
-    double[] TCE_start = {0, 14}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {7, 7}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
 //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
@@ -44,9 +44,10 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     ////////////////////
     //GRID CONSTRUCTOR//
     ////////////////////
-    public gridLattice(int xDim, int yDim, String outFileName) {
+    public gridLattice(int xDim, int yDim, String outFileName, Rand rng) {
         //Calls the constructor of the parent class (AgentGrid2D).
         super(xDim, yDim, agentLattice.class, true, true);
+        this.rn = rng;
         output = new FileIO(outFileName, "w");
         output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %,TCE_ON,Chemo_ON\n");
         double totalArea = xDim * yDim;
@@ -71,14 +72,15 @@ class gridLattice extends AgentGrid2D<agentLattice> {
 //                c.type = Tumor;
 //            }
 
-            totalTumorCells++; // Count both Tumor and PD-L1+ Tumor
+            c.type = Tumor;
             c.SetCellColor();
+            totalTumorCells++; // Count both Tumor and PD-L1+ Tumor
         }
         // Initialize T cells: 5% of the grid area
         int numTCells = (int)(totalArea * confluency * 0.2); // according to
         int numInactiveTCells = numTCells;
-        int numActiveTCells = 0;
-        int numExhaustedTCells = 0;
+        int numActiveTCells = (int) (totalArea * 0.0);
+        int numExhaustedTCells = (int) (totalArea * 0.0);
         //int numTregs = (int)(numTCells * 0.096);
 
         // Place inactive T cells
@@ -237,13 +239,14 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
-        //TIME STAMP
-        String simLabel = "TCE_CONT_42days";
-        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
-        java.util.Date now = new java.util.Date();
-        String date_time = dateFormat.format(now);
+        for (int run = 0; run < 50; run++) {
+            //TIME STAMP
+            String simLabel = "TCE_CONT_28days";
+            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
+            java.util.Date now = new java.util.Date();
+            String date_time = dateFormat.format(now);
 
-            double day=0;
+            double day = 0;
             String save = "";
             String VASC_ARCH_PATH = "";
             //GridWindow win = null;
@@ -252,12 +255,12 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             double TIMESTEPS = STEPS;
 
             // PATHS
-            String projPath = "TCE_TFI" ; // place project path here
+            String projPath = "TCE_TFI"; // place project path here
             String setting_dir = projPath + VASC_ARCH_PATH + save + "/output/" + "/" + date_time + "/";
             // CREATE OUTPUT DIR
             new File(setting_dir).mkdirs();
-        String outputFilename = simLabel + "_" + date_time + ".csv";
-        String path_to_output_file = setting_dir + outputFilename;
+            String outputFilename = simLabel + "_" + date_time + ".csv";
+            String path_to_output_file = setting_dir + outputFilename;
 
             // OUTPUT WINDOW
             UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
@@ -272,7 +275,8 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             win.RunGui();
             GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
             // GRID
-            gridLattice g = new gridLattice(xDim, yDim, path_to_output_file);
+            Rand runRNG = new Rand(run);
+            gridLattice g = new gridLattice(xDim, yDim, path_to_output_file, runRNG);
             // TIME LOOP
             for (int i = 0; i < TIMESTEPS; i++) {
                 timeStep = i;
@@ -303,13 +307,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
 //                    dayLabel.SetText("Day: " + (int) day);
 //                    chemoLabel.SetText("Chemo: " + (g.chemo_on ? "ON" : "OFF"));
 
-                    day+= 1;
+                    day += 1;
 
                     //System.out.println("TCE_start.length: " + g.TCE_start.length);
-                    if (g.TCE_ON == true){
+                    if (g.TCE_ON == true) {
                         System.out.println("TCE_ON = true");
                     }
-                    if (g.TCE_ON == false){
+                    if (g.TCE_ON == false) {
                         System.out.println("TCE_ON = false");
                     }
                 }
@@ -317,6 +321,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             g.output.Close();
             win.Close();
             gm_Cell_vis.Close();
+        }
     }
 }
 
@@ -339,7 +344,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     final public static int cancer = RGB256(47, 32, 66); // tumor cell color
     final public static int inactivetcell = RGB256(255, 165, 0);
 //    final public static int treg = RGB256(128, 0, 32);
-    final public static int pd_l1_tumor = RGB256(128, 128, 128); // Red for PD-L1+ tumors
+    //final public static int pd_l1_tumor = RGB256(128, 128, 128); // Red for PD-L1+ tumors
 
     public static int CategorialColor(int index) {
         switch (index) {
