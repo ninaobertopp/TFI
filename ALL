@@ -44,12 +44,15 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     ////////////////////
     //GRID CONSTRUCTOR//
     ////////////////////
-    public gridLattice(int xDim, int yDim, String outFileName, Rand rng) {
+    public gridLattice(int xDim, int yDim, String outFileName, Rand rng, int seed) {
         //Calls the constructor of the parent class (AgentGrid2D).
         super(xDim, yDim, agentLattice.class, true, true);
         this.rn = rng;
         output = new FileIO(outFileName, "w");
-        output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %,TCE_ON,Chemo_ON\n");
+        output.Write("Seed," + seed + "\n");
+        output.Write("Day,CD8 TIL,Total Tumor (Tumor + PD-L1),Active T-cells,Exhausted T-cells,Inactive T-cells,Tregs,Tumor,PD-L1 Tumor,PD-L1 %, % Exhausted T-cells, TCE_ON, Chemo_ON\n");
+
+
         double totalArea = xDim * yDim;
         // Initialize Tumor cells: 30% of the grid area
         double confluency = 0.5;
@@ -153,38 +156,44 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     }
     //Output numbers of cell populations
     public double[] CellCounts() {
-        double[] counts = new double[9];  // Increased array size to store all relevant cell types
+        double[] counts = new double[10];  // Increased to store % exhausted T cells
 
         for (agentLattice c : this) {
             if (c.type == activeTcell) {
-                counts[2]++;  // Active T cells
+                counts[2]++;
             } else if (c.type == exhaustedTcells) {
-                counts[3]++;  // Exhausted T cells
+                counts[3]++;
             } else if (c.type == inactiveTcell) {
-                counts[4]++;  // Inactive T cells
+                counts[4]++;
             } else if (c.type == Tumor) {
-                counts[6]++;  // Tumor
+                counts[6]++;
             }
         }
 
-
-        counts[1] = counts[6]; // Total Tumor (now only one type)
+        counts[1] = counts[6]; // Total Tumor
         counts[0] = counts[2] + counts[3] + counts[4]; // Total CD8 TILs
-        counts[7] = 0; // No PD-L1 tumor
-        counts[8] = 0.0; // PD-L1 % = 0
+        counts[7] = 0; // No PD-L1 tumors
+        counts[8] = (counts[1] > 0) ? (counts[7] / counts[1]) * 100.0 : 0.0;  // PD-L1 %
 
+        // ✅ New: % Exhausted T-cells
+        double totalT = counts[2] + counts[3] + counts[4];
+        counts[9] = (totalT > 0) ? (counts[3] / totalT) * 100.0 : 0.0;
 
         return counts;
     }
 
+
     //public void RecordOut(FileIO writeHere, int time, double[] cts, boolean tceOnFlag, boolean chemoOnFlag)
-    public void RecordOut(FileIO writeHere, int time, double[] cts, boolean tceOnFlag){
+    public void RecordOut(FileIO writeHere, int time, double[] cts, boolean tceOnFlag) {
         writeHere.Write(time + ",");
-        writeHere.WriteDelimit(cts, ",");
-        writeHere.Write(",");
-        writeHere.Write((tceOnFlag ? "true" : "false") + "\n");
-//        writeHere.Write((tceOnFlag ? "true" : "false") + "," + (chemoOnFlag ? "true" : "false") + "\n");
+        for (int i = 0; i < cts.length; i++) {
+            writeHere.Write(String.format("%.2f", cts[i]));
+            writeHere.Write(",");
+        }
+        writeHere.Write((tceOnFlag ? "true" : "false") + ",false\n");
     }
+
+
 
 
     public void ModelStep(double timeStep, double day) {
@@ -238,12 +247,15 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
-        for (int run = 0; run < 50; run++) {
+        for (int run = 0; run < 3; run++) {
             //TIME STAMP
             String simLabel = "TCE_CONT_28days";
             java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
             java.util.Date now = new java.util.Date();
             String date_time = dateFormat.format(now);
+
+            // LOG SEED
+            System.out.println("=== RUN " + run + " | SEED: " + run + " ===");
 
             double day = 0;
             String save = "";
@@ -278,7 +290,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
               GifMaker gm_Cell_vis = new GifMaker(projPath.concat("/").concat("CellVid").concat(".gif"), 100, true);
             // GRID
             Rand runRNG = new Rand(run);
-            gridLattice g = new gridLattice(xDim, yDim, path_to_output_file, runRNG);
+            gridLattice g = new gridLattice(xDim, yDim, path_to_output_file, runRNG, run);
             // TIME LOOP
             for (int i = 0; i < TIMESTEPS; i++) {
                 timeStep = i;
@@ -407,7 +419,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
             double rn_BirthDeath = G.rn.Double();
             double deathRate = G.T_CELL_DEATH_RATE;
             double deathProb = ProbScale(deathRate, 1);  // Calculate probability
-            
+
 
             if (rn_BirthDeath < deathProb) {  // Check if cell should die
                 this.Dispose();
