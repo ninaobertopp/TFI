@@ -15,7 +15,7 @@ import static HAL.Util.*;
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (28*24.0);
+    public final static double STEPS = (84*24.0);
     public static boolean VISUALS = false; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
@@ -28,12 +28,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     public int totalTumorCells = 0;     // Tracks all tumor cells
     //public int totalPDL1TumorCells = 0; // Tracks PD-L1+ tumor cells
     public int tumorKillsToday = 0;
+
     final static double Tumor_PROLIFERATION_PROB = 1.0/24.0; //cancer cell division rate; SENSITIVITY ANALYSIS
     final static double Tumor_DEATH_PROB = 1.0 / 132.0; // cancer cell apoptosis rate
     public double T_CELL_DEATH_RATE = 1.0 / 48.0; // tcell death rate - used for exhausted tcells
     boolean TCE_ON; // switching on tce therapy
-    double[] TCE_start = {0}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {28}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {0, 14, 42, 56}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {7, 7, 7, 7}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
     //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
@@ -205,7 +206,7 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             c.CellStep();
         }
 
-// ✅ Recalculate tumor counts directly
+        // ✅ Recalculate tumor counts directly
         totalTumorCells = 0;
         for (agentLattice c : this) {
             if (c.type == Tumor) {
@@ -213,43 +214,60 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             }
         }
 
+        // ✅ Daily logic (only every 24 hours)
+        if (timeStep % 24 == 0 && timeStep != 0) {
 
-        if (TCE_ON && timeStep % 24 == 0 && timeStep != 0) {
-            int numConversions = (int) Math.floor(2.5 * tumorKillsToday); // e.g., 50% of killed tumors cause PD-L1 conversion; SENSITIVITY ANALYSIS
+            // === Tumor → PD-L1+ conversion ===
+//            if (TCE_ON) {
+//                int numConversions = (int) Math.floor(2.5 * tumorKillsToday); // SENSITIVITY ANALYSIS
+//                ArrayList<agentLattice> tumorCells = new ArrayList<>();
+//                for (agentLattice c : this) {
+//                    if (c.type == Tumor) {
+//                        tumorCells.add(c);
+//                    }
+//                }
+//                int conversionsDone = 0;
+//                while (conversionsDone < numConversions && !tumorCells.isEmpty()) {
+//                    int index = rn.Int(tumorCells.size());
+//                    agentLattice selected = tumorCells.get(index);
+//                    selected.type = PD_L1_Tumor;
+//                    selected.SetCellColor();
+//                    totalPDL1TumorCells++;
+//                    totalTumorCells--;
+//                    tumorCells.remove(index);
+//                    conversionsDone++;
+//                }
+//            }
 
-            ArrayList<agentLattice> tumorCells = new ArrayList<>();
-            for (agentLattice c : this) {
-                if (c.type == Tumor) {
-                    tumorCells.add(c);
+            // === T cell reversion (active → inactive) based on half-life decay ===
+            if (!TCE_ON) {
+                for (agentLattice cell : this) {
+                    if (cell.type == activeTcell && cell.hours_since_activation >= 24) {
+
+                        double t_days = cell.hours_since_activation / 24.0;
+                        double t_half_days = 210.0 / 24.0;
+                        double decayProb = 1.0 - Math.exp(-Math.log(2) * t_days / t_half_days);
+
+                        if (rn.Double() < decayProb) {
+                            cell.type = inactiveTcell;
+                            cell.SetCellColor(); // preserve PD-1, age, etc.
+                        }
+                    }
                 }
             }
-
-//            int conversionsDone = 0;
-//            while (conversionsDone < numConversions && !tumorCells.isEmpty()) {
-//                int index = rn.Int(tumorCells.size()); // Pick random tumor
-//                agentLattice selected = tumorCells.get(index);
-//                selected.type = PD_L1_Tumor;  // Convert to PD-L1+ Tumor
-//                selected.SetCellColor();
-//
-//                // ✅ Directly update counts without a separate function
-//                totalPDL1TumorCells++;
-//                totalTumorCells--;
-//
-//                tumorCells.remove(index);
-//                conversionsDone++;
-//            }
         }
+
         double[] cellCounts = CellCounts();
         tumorKillsToday = 0;
-
     }
+
     ////////
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
-        for (int run = 0; run < 3; run++) {
+        for (int run = 0; run < 50; run++) {
             //TIME STAMP
-            String simLabel = "TCE_CONT_28days";
+            String simLabel = "TCE_TFI_7_84days";
             java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
             java.util.Date now = new java.util.Date();
             String date_time = dateFormat.format(now);
@@ -347,7 +365,9 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
     double tcellKills = 0; // Track T cell kills per step
     double tcellAge = 0; // used for tracking the age of a tcell
     double hours_since_kill = 0; // hours since a tcell last killed a tumor cell
-    double hours_since_division = 0; //days since the Tcell has divided
+    public double hours_since_activation = 0;
+    public double hours_since_division = 0;
+
     ////////////////
     //CELL METHODS//
     ////////////////
@@ -397,6 +417,7 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
 
             if (G.TCE_ON) {
                 this.type = activeTcell;
+                this.hours_since_activation = 0;
                 this.SetCellColor(); // Update cell color after type change
             }
             for (int run = 0; run < 3; run++) {
@@ -451,6 +472,11 @@ class agentLattice extends AgentSQ2Dunstackable<gridLattice> {
         }
 
         if (type == activeTcell) {
+            if (G.TCE_ON) {
+                this.hours_since_activation = 0;
+            } else {
+                this.hours_since_activation += 1;
+            }
             // Increment T cell age and hours since last kill every hour
             this.tcellAge += 1;
             this.hours_since_kill += 1;
