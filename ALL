@@ -9,13 +9,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import static TCE_TFI.gridLattice.*;
 import static HAL.Util.*;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+
 
 //////////////
 //GRID CLASS//
 //////////////
 class gridLattice extends AgentGrid2D<agentLattice> {
     public static int timeStep = 0; // initial timestep
-    public final static double STEPS = (84*24.0);
+    public final static double STEPS = (28*24.0);
     public static boolean VISUALS = false; // turns on/off visualizations for the model
     public final static int activeTcell = 1; // active cd8 t-cells
     public final static int exhaustedTcells = 4; // exhausted cd8 t-cell
@@ -31,10 +34,17 @@ class gridLattice extends AgentGrid2D<agentLattice> {
 
     final static double Tumor_PROLIFERATION_PROB = 1.0/24.0; //cancer cell division rate; SENSITIVITY ANALYSIS
     final static double Tumor_DEATH_PROB = 1.0 / 132.0; // cancer cell apoptosis rate
-    public double T_CELL_DEATH_RATE = 1.0 / 48.0; // tcell death rate - used for exhausted tcells
+    // T cell death rate (per hour) for exhausted T cells
+// Calibrated so that ~40% of exhausted T cells die within 10 days (240 hours)
+// Derived using exponential decay: 0.60 = exp(-r * 240) → r ≈ 0.00213
+// Based on survival kinetics reported in:
+// Hedfors & Brinchmann (2008), “Long-Term Proliferation and Survival of In Vitro-Activated T Cells”
+// Figure 1B: CD8⁺ memory T cells show ~40% death at day 2 (AICD), then stabilize at <10% death beyond day 6
+    public double T_CELL_DEATH_RATE = 0.00213;
+
     boolean TCE_ON; // switching on tce therapy
-    double[] TCE_start = {0, 14, 42, 56}; //{0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
-    double[] TCE_Duration = {7, 7, 7, 7}; //{3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
+    double[] TCE_start = {0, 14}; //{0, 4, 8, 12, 16, 20, 24}; {0, 6, 12, 18, 24}; {0, 6, 12, 18, 24, 42, 48, 54, 60, 66}; {0, 14, 42, 56}
+    double[] TCE_Duration = {7, 7}; //{2, 2, 2, 2, 2, 2, 2}; {3, 3, 3, 3, 3}; {3, 3, 3, 3, 3, 3, 3, 3, 3, 3}; {7, 7, 7, 7}
     //    boolean chemo_on = false;// Chemotherapy switch
 //    public static double[] chemo_start_times = {1, 8, 15, 22}; // Multiple chemo starts (e.g., day 1, 10, and 20)
 //    public static double chemo_duration = 1; // Each cycle lasts 1 day
@@ -195,6 +205,30 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     }
 
 
+    // Save a PNG of the current grid state at logical resolution x scale
+    public void savePNG(String filePath, int scale) {
+        int w = xDim * scale, h = yDim * scale;
+        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        // draw each lattice cell as a scale x scale block
+        for (int x = 0; x < xDim; x++) {
+            for (int y = 0; y < yDim; y++) {
+                agentLattice a = GetAgent(x, y);
+                int col = (a != null) ? a.color : RGB256(240, 220, 220); // same bg as UI
+                int argb = 0xFF000000 | (col & 0x00FFFFFF);              // ensure opaque alpha
+                int x0 = x * scale, y0 = y * scale;
+                for (int dx = 0; dx < scale; dx++) {
+                    for (int dy = 0; dy < scale; dy++) {
+                        img.setRGB(x0 + dx, y0 + dy, argb);
+                    }
+                }
+            }
+        }
+        try {
+            ImageIO.write(img, "png", new File(filePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
 
     public void ModelStep(double timeStep, double day) {
@@ -265,13 +299,12 @@ class gridLattice extends AgentGrid2D<agentLattice> {
     //MAIN//
     ////////
     public static void main (String[]args) throws IOException {
-        for (int run = 0; run < 50; run++) {
-            //TIME STAMP
-            String simLabel = "TCE_TFI_7_84days";
-            java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
-            java.util.Date now = new java.util.Date();
-            String date_time = dateFormat.format(now);
-
+        //TIME STAMP
+        String simLabel = "TCE_MO_FRI_42days";
+        java.text.SimpleDateFormat dateFormat = new java.text.SimpleDateFormat("yyyy-MM-dd_HH_SS");
+        java.util.Date now = new java.util.Date();
+        String date_time = dateFormat.format(now);
+        for (int run = 0; run < 1; run++) {
             // LOG SEED
             System.out.println("=== RUN " + run + " | SEED: " + run + " ===");
 
@@ -291,17 +324,21 @@ class gridLattice extends AgentGrid2D<agentLattice> {
             String outputFilename = simLabel + "_" + date_time + "_rep" + run + ".csv";
             String path_to_output_file = setting_dir + outputFilename;
 
+            // per-replicate frame folder for daily PNGs
+            String frameDir = setting_dir + String.format("frames_rep%02d/", run);
+            new File(frameDir).mkdirs();
 
-              // OUTPUT WINDOW
-              UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
-              UIWindow win = new UIWindow("TCE_TFI");
-              win.AddCol(0, new UILabel("Cells"));
-              win.AddCol(0, Cell_vis);
-              UILabel dayLabel = new UILabel("Day: 0");
-              UILabel chemoLabel = new UILabel("Chemo: OFF");
+            // OUTPUT WINDOW
+            UIGrid Cell_vis = new UIGrid(xDim, yDim, 4, 2, 5);
+            UIWindow win = new UIWindow("TCE_TFI");
+            win.AddCol(0, new UILabel("Cells"));
+            win.AddCol(0, Cell_vis);
+            UILabel dayLabel = new UILabel("Day: 0");
+            UILabel chemoLabel = new UILabel("Chemo: OFF");
 
-              win.AddCol(1, dayLabel);
-              win.AddCol(1, chemoLabel);
+            win.AddCol(1, dayLabel);
+            win.AddCol(1, chemoLabel);
+
             if (VISUALS) {
                 win.RunGui();
             }
@@ -332,8 +369,13 @@ class gridLattice extends AgentGrid2D<agentLattice> {
                 }
                 // OTHER OUTPUT
                 if (i % 24.0 == 0) {
+                    // write CSV for this day
                     System.out.println("Day " + day);
                     g.RecordOut(g.output, (int) day, cell_count, g.TCE_ON);
+
+                    // save PNG for this day (scale 4 gives a 640 x 600 image for a 160 x 150 grid)
+                    String pngPath = frameDir + String.format("day_%02d.png", (int) day);
+                    g.savePNG(pngPath, 4);
 
                     day += 1;
 
